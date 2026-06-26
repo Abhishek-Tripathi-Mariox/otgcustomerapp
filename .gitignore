@@ -73,3 +73,14 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Expo
+.expo/
+
+# env (keep secrets/config out of git; commit .env.example instead)
+.env*
+!.env.example
+
+# IDE / editor
+.vscode/
+*.log
