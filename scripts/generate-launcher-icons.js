@@ -1,0 +1,73 @@
+/**
+ * Generates legacy launcher PNGs (Android < 8.0 fallback) for the OTG customer app.
+ *
+ * Run from APPLICATIONS/customer-app:
+ *   npx --yes -p sharp@0.33.5 node scripts/generate-launcher-icons.js
+ *
+ * Adaptive icons for Android 8+ are already configured via XML in
+ * res/mipmap-anydpi-v26 and res/drawable/ic_launcher_foreground.xml.
+ */
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
+
+const RES_DIR = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
+
+// Legacy launcher icon dimensions per density (pre-adaptive, Android < 8).
+const SIZES = {
+  'mipmap-mdpi': 48,
+  'mipmap-hdpi': 72,
+  'mipmap-xhdpi': 96,
+  'mipmap-xxhdpi': 144,
+  'mipmap-xxxhdpi': 192,
+};
+
+const BG = '#FDE200'; // OTG brand yellow
+const PADDING_RATIO = 0.18; // 18% padding inside the square so the logo doesn't touch the edges
+
+// OTG logo SVG — extracted from src/assets/Logo.tsx, with the dark outer ring (#404040)
+// and the yellow center wedges flipped to white so the yellow background shows through.
+// For the legacy icon we use white wedges + dark ring on a yellow background, which
+// gives the strongest readability at small sizes.
+const buildSvg = (size) => {
+  const inner = Math.round(size * (1 - 2 * PADDING_RATIO));
+  const offset = Math.round((size - inner) / 2);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="${BG}"/>
+  <g transform="translate(${offset},${offset}) scale(${inner / 185.236})">
+    <path fill="#404040" d="M27.4811 111.396C27.1732 113.274 26.9208 115.02 26.5978 116.751C26.1435 119.184 24.4981 120.532 22.4489 120.214C20.3996 119.896 19.1428 118.124 19.5062 115.701C20.3491 110.099 21.2223 104.501 22.2369 98.929C22.7921 95.8905 25.7196 94.5984 28.4704 96.0571C33.1947 98.5606 37.8938 101.125 42.5778 103.709C44.6371 104.845 45.3185 106.848 44.3898 108.63C43.451 110.437 41.4522 111.038 39.3525 110.043C37.6616 109.241 36.0364 108.312 34.0931 107.287C34.7291 109.392 35.8698 110.886 36.9247 112.37C50.5981 131.646 69.2986 141.756 92.9102 141.943C120.237 142.16 145.105 125.034 155.255 99.6861C157.204 94.8154 158.46 89.758 159.369 84.5995C159.616 83.1863 159.349 82.6714 157.729 82.6664C107.063 82.5554 56.3975 82.515 5.73195 82.833C4.78809 82.838 3.83414 82.8431 2.91047 82.6866C1.11865 82.3888 0.109172 81.1875 0.0082249 79.4411C-0.09777 77.6846 0.830947 76.4127 2.53191 75.8878C3.29911 75.6505 4.14203 75.5849 4.94961 75.5748C8.7957 75.5345 12.6368 75.489 16.4829 75.5546C17.7397 75.5748 18.1788 75.2972 18.2192 73.9243C18.9712 48.8793 29.283 28.6948 49.5634 13.9464C66.8456 1.37841 86.3335 -2.61911 107.129 1.64593C133.829 7.12233 152.161 23.0973 162.387 48.2786C165.663 56.3342 167.142 64.8492 167.182 73.5609C167.187 75.0852 167.531 75.6203 169.141 75.5698C172.856 75.4537 176.575 75.5345 180.295 75.5799C181.103 75.59 181.951 75.6505 182.713 75.8979C184.389 76.448 185.343 77.6846 185.227 79.4613C185.111 81.2228 184.066 82.3636 182.299 82.6916C181.562 82.8279 180.795 82.838 180.043 82.833C176.136 82.8128 172.23 82.8229 168.323 82.7017C167.081 82.6614 166.733 83.1005 166.572 84.2563C164.149 101.72 156.684 116.671 143.833 128.764C131.043 140.797 115.84 147.848 98.2604 148.787C68.1276 150.402 44.9854 138.087 28.7126 112.729C28.435 112.289 28.3139 111.679 27.4811 111.396ZM128.201 75.2417C128.201 75.3326 128.201 75.4184 128.201 75.5092C138.155 75.5092 148.108 75.4638 158.057 75.5546C159.783 75.5698 160.156 75.055 160.096 73.4348C159.869 67.3022 158.95 61.311 157.259 55.4005C149.723 29.0532 125.123 9.1867 97.8213 7.44031C96.2768 7.33936 95.7872 7.62707 95.7973 9.2826C95.9538 30.633 96.0497 51.9885 96.0901 73.3388C96.0951 74.9944 96.6655 75.277 98.1544 75.272C108.168 75.2114 118.187 75.2417 128.201 75.2417ZM88.8319 41.2779C88.7613 41.2779 88.6957 41.2779 88.625 41.2779C88.625 30.5724 88.5947 19.867 88.6553 9.16147C88.6654 7.68763 88.2464 7.3747 86.8231 7.51098C76.4356 8.49521 66.6336 11.5438 57.8562 17.0657C37.162 30.0778 26.3707 48.9853 25.3713 73.4549C25.3006 75.1256 25.7549 75.5546 27.4306 75.5395C47.2668 75.3881 67.103 75.3023 86.9392 75.272C88.6048 75.2669 88.8673 74.6815 88.8572 73.1975C88.8067 62.5627 88.8319 51.9228 88.8319 41.2779Z"/>
+    <path fill="#FFFFFF" d="M128.201 75.2417C118.187 75.2417 108.173 75.2114 98.1544 75.272C96.6654 75.2821 96.0951 74.9994 96.09 73.3388C96.0496 51.9884 95.9487 30.633 95.7973 9.28259C95.7872 7.62705 96.2768 7.33935 97.8213 7.4403C125.117 9.18669 149.723 29.0532 157.259 55.3954C158.95 61.3059 159.869 67.2971 160.096 73.4297C160.156 75.0549 159.783 75.5647 158.057 75.5496C148.103 75.4587 138.15 75.5041 128.201 75.5041C128.201 75.4183 128.201 75.3325 128.201 75.2417Z"/>
+    <path fill="#FFFFFF" d="M88.8319 41.2779C88.8319 51.9178 88.8067 62.5627 88.8622 73.2026C88.8723 74.6865 88.6098 75.272 86.9442 75.277C67.108 75.3073 47.2718 75.3982 27.4356 75.5445C25.7599 75.5597 25.3056 75.1307 25.3763 73.46C26.3757 48.9852 37.167 30.0778 57.8612 17.0707C66.6386 11.5489 76.4406 8.50025 86.8281 7.51601C88.2464 7.37973 88.6653 7.69267 88.6603 9.1665C88.5997 19.872 88.63 30.5775 88.63 41.283C88.6956 41.2779 88.7612 41.2779 88.8319 41.2779Z"/>
+  </g>
+</svg>`;
+};
+
+(async () => {
+  for (const [folder, size] of Object.entries(SIZES)) {
+    const dir = path.join(RES_DIR, folder);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
+
+    const svg = Buffer.from(buildSvg(size));
+
+    // Square launcher
+    await sharp(svg)
+      .png()
+      .toFile(path.join(dir, 'ic_launcher.png'));
+
+    // Round launcher (mask the square render to a circle)
+    const circleMask = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`
+    );
+    await sharp(svg)
+      .composite([{input: circleMask, blend: 'dest-in'}])
+      .png()
+      .toFile(path.join(dir, 'ic_launcher_round.png'));
+
+    console.log(`✓ ${folder}/ic_launcher{,_round}.png  (${size}x${size})`);
+  }
+  console.log('\nDone. Rebuild the app: cd android && .\\gradlew clean assembleRelease');
+})().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
