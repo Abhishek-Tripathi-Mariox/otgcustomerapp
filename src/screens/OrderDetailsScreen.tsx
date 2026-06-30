@@ -120,26 +120,32 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   const handleGetInvoice = async () => {
     const id = orderId || order?._id || order?.bookingId;
     if (!id) {
-      showAppAlert('Invoice', 'Order details are still loading. Please retry.');
+      showAppAlert({
+        title: 'Invoice',
+        message: 'Order details are still loading. Please retry.',
+      });
       return;
     }
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
-        showAppAlert('Invoice', 'Please log in again to view the invoice.');
+        showAppAlert({
+          title: 'Invoice',
+          message: 'Please log in again to view the invoice.',
+        });
         return;
       }
       const url = `${API_BASE_URL}/mobile/orders/${id}/invoice?token=${encodeURIComponent(
         token,
       )}`;
-      const ok = await Linking.canOpenURL(url);
-      if (ok) {
-        await Linking.openURL(url);
-      } else {
-        showAppAlert('Invoice', 'Could not open the invoice.');
-      }
+      // Call openURL directly — canOpenURL returns false for https on Android
+      // 11+ (package visibility), which wrongly blocked the invoice.
+      await Linking.openURL(url);
     } catch {
-      showAppAlert('Invoice', 'Could not open the invoice. Please try again.');
+      showAppAlert({
+        title: 'Invoice',
+        message: 'Could not open the invoice. Please try again.',
+      });
     }
   };
 

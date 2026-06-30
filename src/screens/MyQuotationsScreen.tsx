@@ -410,16 +410,14 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation}) => {
                       onPress={async () => {
                         const url = q.quotationPdf!.url;
                         try {
-                          if (await Linking.canOpenURL(url)) {
-                            await Linking.openURL(url);
-                          } else {
-                            showAppAlert('Quotation', 'Could not open the PDF.');
-                          }
+                          // openURL directly — canOpenURL returns false for
+                          // https on Android 11+ (package visibility).
+                          await Linking.openURL(url);
                         } catch {
-                          showAppAlert(
-                            'Quotation',
-                            'Could not open the PDF. Please try again.',
-                          );
+                          showAppAlert({
+                            title: 'Quotation',
+                            message: 'Could not open the PDF. Please try again.',
+                          });
                         }
                       }}
                       style={{

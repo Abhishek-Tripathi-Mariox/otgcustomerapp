@@ -85,19 +85,22 @@ const MyOrdersScreen: React.FC<{navigation?: any}> = ({navigation}) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
-        showAppAlert('Invoice', 'Please log in again to view the invoice.');
+        showAppAlert({
+          title: 'Invoice',
+          message: 'Please log in again to view the invoice.',
+        });
         return;
       }
       const url = `${API_BASE_URL}/mobile/orders/${id}/invoice?token=${encodeURIComponent(
         token,
       )}`;
-      if (await Linking.canOpenURL(url)) {
-        await Linking.openURL(url);
-      } else {
-        showAppAlert('Invoice', 'Could not open the invoice.');
-      }
+      // openURL directly — canOpenURL returns false for https on Android 11+.
+      await Linking.openURL(url);
     } catch {
-      showAppAlert('Invoice', 'Could not open the invoice. Please try again.');
+      showAppAlert({
+        title: 'Invoice',
+        message: 'Could not open the invoice. Please try again.',
+      });
     }
   };
 
