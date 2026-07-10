@@ -419,23 +419,25 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
                 }}>
                 Invoice Details
               </Text>
-              <TouchableOpacity
-                onPress={handleGetInvoice}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: scale(4),
-                }}>
-                <InvoiceIcon />
-                <Text
+              {order.status === 'delivered' ? (
+                <TouchableOpacity
+                  onPress={handleGetInvoice}
                   style={{
-                    fontFamily: FONTS.regular,
-                    fontSize: scale(12),
-                    color: COLORS.textSecondary,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: scale(4),
                   }}>
-                  Get Invoice
-                </Text>
-              </TouchableOpacity>
+                  <InvoiceIcon />
+                  <Text
+                    style={{
+                      fontFamily: FONTS.regular,
+                      fontSize: scale(12),
+                      color: COLORS.textSecondary,
+                    }}>
+                    Get Invoice
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
 
             <TouchableOpacity

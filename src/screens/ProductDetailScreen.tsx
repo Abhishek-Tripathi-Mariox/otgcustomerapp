@@ -479,6 +479,14 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   const gstOnSelling = sellingPriceExGst * (gstRate / 100);
   const showPriceSummary = basicPrice > 0 || sellingPriceExGst > 0 || mrp > 0;
 
+  // Convenience fee (per_km / per_unit / fixed) — mirrors admin's breakdown.
+  const convenienceFeeType = material?.transportation?.type ?? 'free';
+  const convenienceFeeCharge = material?.transportation?.charge ?? 0;
+  const showConvenienceFee = convenienceFeeType !== 'free' && convenienceFeeCharge > 0;
+  const convenienceFeeSuffix =
+    convenienceFeeType === 'per_km' ? '/km' : convenienceFeeType === 'per_unit' ? '/unit' : '';
+  const gstOnConvenienceFee = convenienceFeeCharge * (gstRate / 100);
+
 
   const getRelatedDiscount = (item: Material) => {
     if (item.mrp > 0 && item.finalSellingPrice > 0 && item.finalSellingPrice < item.mrp) {
@@ -796,6 +804,31 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
                 value={formatCurrency(sellingPrice)}
                 emphasis
               />
+
+              {showConvenienceFee && (
+                <>
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: COLORS.divider,
+                      marginVertical: scale(8),
+                    }}
+                  />
+                  <PriceRow
+                    label="Convenience Fee:"
+                    value={`${formatCurrency(convenienceFeeCharge)}${convenienceFeeSuffix}`}
+                  />
+                  <PriceRow
+                    label={`GST on Convenience Fee (${gstRate}%):`}
+                    value={`+ ${formatCurrency(gstOnConvenienceFee)}${convenienceFeeSuffix}`}
+                  />
+                  <PriceRow
+                    label="Convenience Fee (incl. GST):"
+                    value={`${formatCurrency(convenienceFeeCharge + gstOnConvenienceFee)}${convenienceFeeSuffix}`}
+                    emphasis
+                  />
+                </>
+              )}
             </View>
           )}
 

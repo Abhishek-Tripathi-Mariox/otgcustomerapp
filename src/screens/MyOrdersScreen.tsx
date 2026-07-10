@@ -380,7 +380,7 @@ const MyOrdersScreen: React.FC<{navigation?: any}> = ({navigation}) => {
                     {activeTab === 'ongoing' ? 'Status' : 'Details'}
                   </Text>
                 </TouchableOpacity>
-                {activeTab === 'past' && (
+                {activeTab === 'past' && order.status === 'delivered' && (
                   <TouchableOpacity
                     onPress={() => openInvoice(order._id || order.bookingId)}
                     style={{
