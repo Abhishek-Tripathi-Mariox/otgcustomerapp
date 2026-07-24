@@ -1,5 +1,5 @@
 import {PermissionsAndroid, Platform} from 'react-native';
-import axios from 'axios';
+import api from './api';
 
 let Geolocation: any = null;
 try {
@@ -89,10 +89,9 @@ export const reverseGeocode = async (
   longitude: number,
 ): Promise<ReverseGeocodeResult | undefined> => {
   try {
-    const res = await axios.get(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-      {headers: {'User-Agent': 'OTGCustomerApp/1.0'}},
-    );
+    const res = await api.get('/geocode/reverse', {
+      params: {lat: latitude, lon: longitude},
+    });
     const addr = res.data?.address;
     if (!addr) return undefined;
     const street = [addr.road, addr.neighbourhood, addr.suburb].filter(Boolean).join(', ');

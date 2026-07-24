@@ -15,7 +15,7 @@ let Geolocation: any = null;
 try {
   Geolocation = require('react-native-geolocation-service').default;
 } catch {}
-import axios from 'axios';
+import api from '../services/api';
 import Svg, {Path, Circle, Line, Rect, G, ClipPath, Defs, Mask} from 'react-native-svg';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import {scale, SCREEN_WIDTH} from '../utils/scale';
@@ -237,12 +237,12 @@ const EditProfileScreen: React.FC<{navigation?: any}> = ({navigation}) => {
           setLatitude(lat);
           setLongitude(lon);
 
-          // Reverse geocode using OpenStreetMap Nominatim (free, no API key)
+          // Reverse geocode via the backend proxy (Google if configured, else
+          // free OpenStreetMap Nominatim)
           try {
-            const res = await axios.get(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
-              {headers: {'User-Agent': 'OTGCustomerApp/1.0'}},
-            );
+            const res = await api.get('/geocode/reverse', {
+              params: {lat, lon},
+            });
             const addr = res.data?.address;
             if (addr) {
               setStreet(

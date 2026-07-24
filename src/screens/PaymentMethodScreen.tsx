@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import RazorpayCheckout from 'react-native-razorpay';
 import Svg, {Path, Circle} from 'react-native-svg';
 import {scale} from '../utils/scale';
 import {COLORS} from '../constants/colors';
@@ -25,6 +26,7 @@ import {
   clearCart,
 } from '../store';
 import orderService from '../services/orderService';
+import paymentService from '../services/paymentService';
 import {showAppAlert} from '../components/AlertProvider';
 import {formatCurrency} from '../utils/currency';
 
@@ -160,6 +162,10 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
   const billTotal = Math.max(0, subTotal - couponDiscount);
 
   const handlePlaceOrder = async () => {
+    // Guard against a fast double-tap firing this twice before the button's
+    // `disabled` prop takes effect on the next render.
+    if (submitting) return;
+
     if (orderItems.length === 0) {
       showAppAlert({
         title: 'Nothing to order',
@@ -177,50 +183,124 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
       return;
     }
 
-    try {
-      setSubmitting(true);
-      const res = await orderService.checkout({
-        items: orderItems.map(i => ({
-          materialId: i.id,
-          quantity: i.quantity,
-        })),
-        paymentMethod:
-          PAYMENT_LABELS[selectedMethod] ||
-          (selectedMethod.startsWith('card-')
-            ? 'Card'
-            : selectedMethod),
-        site: deliverySite,
-        pincode: deliveryAddress?.pincode || undefined,
-        couponCode: !isBuyNow && appliedOffer ? appliedOffer.code : undefined,
-      });
+    const paymentMethodLabel =
+      PAYMENT_LABELS[selectedMethod] ||
+      (selectedMethod.startsWith('card-') ? 'Card' : selectedMethod);
 
-      if (res.data.success) {
-        if (!isBuyNow) {
-          dispatch(clearCart());
-        }
-        showAppAlert({
-          title: 'Order placed!',
-          message: res.data.message,
-          buttons: [
-            {
-              text: 'View Orders',
-              style: 'primary',
-              onPress: () =>
-                navigation?.reset({
-                  index: 0,
-                  routes: [{name: 'Home'}, {name: 'MyOrders'}],
-                }),
-            },
-          ],
-        });
+    const checkoutPayload = {
+      items: orderItems.map(i => ({
+        materialId: i.id,
+        quantity: i.quantity,
+      })),
+      paymentMethod: paymentMethodLabel,
+      site: deliverySite,
+      pincode: deliveryAddress?.pincode || undefined,
+      couponCode: !isBuyNow && appliedOffer ? appliedOffer.code : undefined,
+    };
+
+    const onOrderPlaced = (message: string) => {
+      if (!isBuyNow) {
+        dispatch(clearCart());
       }
-    } catch (err: any) {
+      showAppAlert({
+        title: 'Order placed!',
+        message,
+        buttons: [
+          {
+            text: 'View Orders',
+            style: 'primary',
+            onPress: () =>
+              navigation?.reset({
+                index: 0,
+                routes: [{name: 'Home'}, {name: 'MyOrders'}],
+              }),
+          },
+        ],
+      });
+    };
+
+    const onOrderFailed = (err: any) => {
       showAppAlert({
         title: 'Order failed',
         message:
           err?.response?.data?.message ||
           'We could not place your order. Please try again.',
       });
+    };
+
+    try {
+      setSubmitting(true);
+
+      // COD always books directly, unchanged from before.
+      if (selectedMethod === 'cod') {
+        const res = await orderService.checkout(checkoutPayload);
+        if (res.data.success) {
+          onOrderPlaced(res.data.message);
+        } else {
+          onOrderFailed(null);
+        }
+        return;
+      }
+
+      // Online methods: ask the backend to open a Razorpay order for the
+      // priced cart. If Razorpay isn't configured on the admin side yet,
+      // `configured` comes back false and we fall back to booking directly
+      // — same as COD — so nothing breaks when the gateway isn't set up.
+      const orderRes = await paymentService.createRazorpayOrder(
+        checkoutPayload,
+      );
+
+      if (!orderRes.data.data.configured) {
+        const res = await orderService.checkout(checkoutPayload);
+        if (res.data.success) {
+          onOrderPlaced(res.data.message);
+        } else {
+          onOrderFailed(null);
+        }
+        return;
+      }
+
+      const {razorpayOrderId, amount, currency, keyId} = orderRes.data.data;
+
+      let checkoutResult;
+      try {
+        checkoutResult = await RazorpayCheckout.open({
+          key: keyId!,
+          order_id: razorpayOrderId!,
+          amount: amount!,
+          currency,
+          name: 'OTG Trading',
+          description: 'Order payment',
+        });
+      } catch (razorpayErr: any) {
+        // No booking was created either way — cart stays intact so the user
+        // can retry. But distinguish a plain user-cancel (code 0/2, the RN
+        // SDK's cancellation codes) from a real failure (network drop,
+        // gateway error) where money may have already left their account —
+        // those need a different message telling them to check first.
+        const cancelled = razorpayErr?.code === 0 || razorpayErr?.code === 2;
+        showAppAlert({
+          title: cancelled ? 'Payment cancelled' : 'Payment did not complete',
+          message: cancelled
+            ? 'Your payment was not completed. The cart has been kept so you can try again.'
+            : 'Something went wrong during payment. If any amount was deducted from your account, it will be refunded automatically — otherwise, please try again.',
+        });
+        return;
+      }
+
+      const verifyRes = await paymentService.verifyRazorpayPayment({
+        razorpayOrderId: checkoutResult.razorpay_order_id,
+        razorpayPaymentId: checkoutResult.razorpay_payment_id,
+        razorpaySignature: checkoutResult.razorpay_signature,
+      });
+
+      if (verifyRes.data.success) {
+        onOrderPlaced(verifyRes.data.message);
+      } else {
+        onOrderFailed(null);
+      }
+    } catch (err: any) {
+      onOrderFailed(err);
     } finally {
       setSubmitting(false);
     }
