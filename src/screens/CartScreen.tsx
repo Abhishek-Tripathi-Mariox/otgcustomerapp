@@ -38,6 +38,7 @@ import {
   clearAppliedOffer,
 } from '../store';
 import {formatCurrency} from '../utils/currency';
+import {computeConvenienceFee} from '../utils/pricing';
 
 const productCement = require('../assets/images/product-cement.png');
 
@@ -142,7 +143,12 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
 
   const catalogSavings = summary.mrpIncl - summary.spIncl;
   const couponDiscount = appliedOffer?.discountAmount || 0;
-  const grandTotal = Math.max(0, summary.spIncl - couponDiscount);
+  const convenienceFeeTotal = cartItems.reduce(
+    (sum, i) => sum + computeConvenienceFee(i.transportation, i.quantity || 0),
+    0,
+  );
+  const grandTotal =
+    Math.max(0, summary.spIncl - couponDiscount) + convenienceFeeTotal;
 
   const fmt = formatCurrency;
 
@@ -585,6 +591,11 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
               value={`− ${fmt(catalogSavings)}`}
               valueColor={COLORS.success}
             />
+          )}
+
+          {/* Convenience fee — admin-configured per-material delivery charge */}
+          {convenienceFeeTotal > 0.01 && (
+            <PriceRow label="Convenience Fee" value={fmt(convenienceFeeTotal)} />
           )}
 
           {/* Coupon discount — only when a coupon is applied */}

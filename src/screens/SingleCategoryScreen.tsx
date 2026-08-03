@@ -207,8 +207,8 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
   }, [searchText]);
 
   const renderProductCard = (item: Material) => {
-    const discount = item.mrp > item.sellingPrice
-      ? Math.round(((item.mrp - item.sellingPrice) / item.mrp) * 100)
+    const discount = item.mrp > item.finalSellingPrice
+      ? Math.round(((item.mrp - item.finalSellingPrice) / item.mrp) * 100)
       : 0;
 
     return (
@@ -282,7 +282,7 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
             }}>
             {item.requestQuote
               ? 'Price on request'
-              : `${formatCurrency(item.sellingPrice)}/${item.unit}`}
+              : `${formatCurrency(item.finalSellingPrice)}/${item.unit}`}
           </Text>
         </View>
         {/* Add to Cart / Get a Quote */}

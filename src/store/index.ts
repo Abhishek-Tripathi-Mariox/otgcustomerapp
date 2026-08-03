@@ -48,6 +48,9 @@ export interface CartItem {
   image?: any;
   category?: string;
   subCategory?: string;
+  // Admin-configured per-material "Convenience Fee" — used to compute the
+  // same delivery-type charge the backend adds to the checkout total.
+  transportation?: {type?: string; charge?: number};
 }
 
 /**
@@ -71,6 +74,7 @@ export const cartItemFromMaterial = (
   image: material.images?.[0] ? {uri: material.images[0]} : undefined,
   category: material.category?.name,
   subCategory: material.subCategory?.name,
+  transportation: material.transportation,
 });
 
 interface AppState {

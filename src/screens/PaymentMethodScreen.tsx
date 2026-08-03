@@ -29,6 +29,7 @@ import orderService from '../services/orderService';
 import paymentService from '../services/paymentService';
 import {showAppAlert} from '../components/AlertProvider';
 import {formatCurrency} from '../utils/currency';
+import {computeConvenienceFee} from '../utils/pricing';
 
 // Assets
 const paytmLogo = require('../assets/images/paytm.png');
@@ -145,6 +146,7 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
         unit?: string;
         image?: {uri: string};
         brand?: string;
+        transportation?: {type?: string; charge?: number};
       }
     | undefined;
   const isBuyNow = !!buyNowItem;
@@ -159,7 +161,11 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
   // Coupon only applies to cart checkouts, not Buy-It-Now
   const couponDiscount =
     !isBuyNow && appliedOffer ? appliedOffer.discountAmount : 0;
-  const billTotal = Math.max(0, subTotal - couponDiscount);
+  const convenienceFeeTotal = orderItems.reduce(
+    (sum, i: any) => sum + computeConvenienceFee(i.transportation, i.quantity || 0),
+    0,
+  );
+  const billTotal = Math.max(0, subTotal - couponDiscount) + convenienceFeeTotal;
 
   const handlePlaceOrder = async () => {
     // Guard against a fast double-tap firing this twice before the button's
