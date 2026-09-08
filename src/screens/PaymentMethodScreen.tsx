@@ -151,6 +151,11 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
     | undefined;
   const isBuyNow = !!buyNowItem;
   const orderItems = isBuyNow ? [buyNowItem!] : cartItems;
+  // Collected on CheckoutDetailsScreen, the mandatory previous step — should
+  // always be present by the time this screen is reached via the app's own
+  // navigation, but guarded defensively below in case this screen is ever
+  // reached another way (e.g. a stale deep link).
+  const buyerDetails = route?.params?.buyerDetails;
 
   // i.price is the final selling price, already inclusive of GST — matching
   // the cart's grand total. Do NOT add GST again on top of it.
@@ -188,6 +193,14 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
       });
       return;
     }
+    if (!buyerDetails) {
+      showAppAlert({
+        title: 'Details missing',
+        message: 'Please go back and fill in your checkout details.',
+      });
+      navigation?.goBack();
+      return;
+    }
 
     const paymentMethodLabel =
       PAYMENT_LABELS[selectedMethod] ||
@@ -202,6 +215,7 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
       site: deliverySite,
       pincode: deliveryAddress?.pincode || undefined,
       couponCode: !isBuyNow && appliedOffer ? appliedOffer.code : undefined,
+      buyerDetails,
     };
 
     const onOrderPlaced = (message: string) => {

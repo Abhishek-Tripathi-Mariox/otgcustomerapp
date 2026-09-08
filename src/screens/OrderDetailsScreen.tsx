@@ -152,6 +152,10 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  // Ticks every second purely to re-render the live countdown below — the
+  // 15-minute eligibility check itself is always re-verified server-side.
+  const [, setTick] = useState(0);
 
   // Rating & reviews (issue #9)
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -160,29 +164,75 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   const [reviewText, setReviewText] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadOrder = useCallback(async () => {
     if (!orderId) {
       setLoading(false);
       setError('Order not specified.');
       return;
     }
-    (async () => {
-      try {
-        const res = await orderService.get(orderId);
-        if (!cancelled) setOrder(res.data.data);
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err?.response?.data?.message || 'Failed to load order.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const res = await orderService.get(orderId);
+      setOrder(res.data.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to load order.');
+    } finally {
+      setLoading(false);
+    }
   }, [orderId]);
+
+  useEffect(() => {
+    loadOrder();
+  }, [loadOrder]);
+
+  const CANCEL_WINDOW_MS = 15 * 60 * 1000;
+  const CANCELLABLE_STATUSES = ['pending', 'accepted', 'confirmed'];
+  const orderAgeMs = order ? Date.now() - new Date(order.createdAt).getTime() : 0;
+  const canCancel =
+    !!order &&
+    CANCELLABLE_STATUSES.includes(order.status) &&
+    orderAgeMs < CANCEL_WINDOW_MS;
+  const cancelMsRemaining = CANCEL_WINDOW_MS - orderAgeMs;
+
+  useEffect(() => {
+    if (!canCancel) return;
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [canCancel]);
+
+  const handleCancelOrder = () => {
+    if (!order) return;
+    showAppAlert({
+      title: 'Cancel this order?',
+      message: 'This cannot be undone. If you already paid, a refund will be initiated automatically.',
+      buttons: [
+        {text: 'Keep Order', style: 'cancel'},
+        {
+          text: 'Cancel Order',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const res = await orderService.cancel(order._id);
+              showAppAlert({
+                title: 'Order cancelled',
+                message: res.data.message,
+              });
+              loadOrder();
+            } catch (err: any) {
+              showAppAlert({
+                title: 'Could not cancel',
+                message:
+                  err?.response?.data?.message ||
+                  'Please try again in a moment.',
+              });
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ],
+    });
+  };
 
   const materialName =
     order && typeof order.material !== 'string'
@@ -401,6 +451,46 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
                 Delivery Site: {order.site}
               </Text>
             ) : null}
+
+            {canCancel && (
+              <View style={{marginTop: scale(14)}}>
+                <Text
+                  style={{
+                    fontFamily: FONTS.regular,
+                    fontSize: scale(11),
+                    color: COLORS.textLight,
+                    marginBottom: scale(8),
+                  }}>
+                  Cancellable for{' '}
+                  {Math.floor(Math.max(0, cancelMsRemaining) / 60000)}:
+                  {String(
+                    Math.floor((Math.max(0, cancelMsRemaining) % 60000) / 1000),
+                  ).padStart(2, '0')}{' '}
+                  more
+                </Text>
+                <TouchableOpacity
+                  onPress={handleCancelOrder}
+                  disabled={cancelling}
+                  style={{
+                    alignSelf: 'flex-start',
+                    paddingHorizontal: scale(16),
+                    paddingVertical: scale(8),
+                    borderRadius: scale(6),
+                    borderWidth: 1.5,
+                    borderColor: COLORS.error,
+                    opacity: cancelling ? 0.6 : 1,
+                  }}>
+                  <Text
+                    style={{
+                      fontFamily: FONTS.medium,
+                      fontSize: scale(12),
+                      color: COLORS.error,
+                    }}>
+                    {cancelling ? 'Cancelling…' : 'Cancel Order'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </Card>
 
           {/* Invoice Details */}

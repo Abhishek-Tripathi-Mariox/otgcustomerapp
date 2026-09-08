@@ -25,10 +25,21 @@ import {
   BackArrowIcon,
   SearchIcon,
   FilterIcon,
+  MinusIcon,
+  PlusIcon,
 } from '../components/icons';
 import {HeaderCartButton, HeaderProfileButton} from '../components';
 import catalogService, {SubCategory, Material} from '../services/catalogService';
-import {useAppDispatch, addCartItem, cartItemFromMaterial} from '../store';
+import {
+  useAppDispatch,
+  useAppSelector,
+  addCartItem,
+  cartItemFromMaterial,
+  incrementCartItem,
+  decrementCartItem,
+  selectCartItems,
+} from '../store';
+import {showAppAlert} from '../components/AlertProvider';
 import {formatCurrency} from '../utils/currency';
 
 const bulkBanner = require('../assets/images/bulk-banner.png');
@@ -127,6 +138,7 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
   route,
 }) => {
   const dispatch = useAppDispatch();
+  const cartItems = useAppSelector(selectCartItems);
   const categoryId = route?.params?.categoryId || '';
   // Brand mode: this screen is reused from "Shop By Brands" to list a brand's
   // products. `brand` is the brand name string filtered server-side.
@@ -210,6 +222,8 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
     const discount = item.mrp > item.finalSellingPrice
       ? Math.round(((item.mrp - item.finalSellingPrice) / item.mrp) * 100)
       : 0;
+    const cartLineQty =
+      cartItems.find(ci => ci.id === item._id)?.quantity || 0;
 
     return (
       <TouchableOpacity
@@ -318,11 +332,67 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
               Get a Quote
             </Text>
           </TouchableOpacity>
+        ) : cartLineQty > 0 ? (
+          <View
+            style={{
+              marginHorizontal: scale(7),
+              marginBottom: scale(7),
+              height: scale(42),
+              borderRadius: scale(10),
+              backgroundColor: COLORS.primary,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: scale(6),
+            }}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                dispatch(decrementCartItem(item._id));
+              }}
+              hitSlop={{top: 6, bottom: 6, left: 6, right: 6}}
+              style={{
+                width: scale(30),
+                height: scale(30),
+                borderRadius: scale(8),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <MinusIcon color={COLORS.secondary} />
+            </TouchableOpacity>
+            <Text
+              style={{
+                fontFamily: FONTS.semiBold,
+                fontSize: scale(14),
+                color: COLORS.secondary,
+              }}>
+              {cartLineQty}
+            </Text>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                dispatch(incrementCartItem(item._id));
+              }}
+              hitSlop={{top: 6, bottom: 6, left: 6, right: 6}}
+              style={{
+                width: scale(30),
+                height: scale(30),
+                borderRadius: scale(8),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <PlusIcon color={COLORS.secondary} />
+            </TouchableOpacity>
+          </View>
         ) : (
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation?.();
               dispatch(addCartItem(cartItemFromMaterial(item)));
+              showAppAlert({
+                title: 'Added to cart',
+                message: `${item.name} has been added to your cart.`,
+              });
             }}
             style={{
               marginHorizontal: scale(7),

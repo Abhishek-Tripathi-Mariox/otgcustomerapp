@@ -27,6 +27,7 @@ import {COLORS} from '../constants/colors';
 import {FONTS} from '../constants/fonts';
 import {SearchIcon, PlusIcon, MinusIcon} from '../components/icons';
 import {HeaderCartButton, HeaderProfileButton} from '../components';
+import {showAppAlert} from '../components/AlertProvider';
 import {formatCurrency} from '../utils/currency';
 import catalogService, {Category, Brand, Material, Banner} from '../services/catalogService';
 import {
@@ -846,6 +847,10 @@ const HomeScreen: React.FC<{navigation?: any}> = ({navigation}) => {
           onPress={(e) => {
             e.stopPropagation?.();
             dispatch(addCartItem(cartItemFromMaterial(item)));
+            showAppAlert({
+              title: 'Added to cart',
+              message: `${item.name} has been added to your cart.`,
+            });
           }}
           style={{
             marginHorizontal: scale(7),

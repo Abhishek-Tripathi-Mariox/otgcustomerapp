@@ -129,6 +129,14 @@ const MyOrdersScreen: React.FC<{navigation?: any}> = ({navigation}) => {
     load();
   }, [load]);
 
+  // Refresh whenever this screen regains focus (e.g. returning from
+  // OrderDetails after cancelling an order) so the list reflects the latest
+  // status without needing a manual pull-to-refresh.
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => load('refresh'));
+    return unsubscribe;
+  }, [navigation, load]);
+
   const ongoing = orders.filter(o => ONGOING_STATUSES.includes(o.status));
   const past = orders.filter(o => !ONGOING_STATUSES.includes(o.status));
   const visible = activeTab === 'ongoing' ? ongoing : past;
@@ -380,6 +388,28 @@ const MyOrdersScreen: React.FC<{navigation?: any}> = ({navigation}) => {
                     {activeTab === 'ongoing' ? 'Status' : 'Details'}
                   </Text>
                 </TouchableOpacity>
+                {activeTab === 'ongoing' && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      navigation?.navigate('TrackOrder', {orderId: order._id})
+                    }
+                    style={{
+                      paddingHorizontal: scale(16),
+                      paddingVertical: scale(8),
+                      borderRadius: scale(6),
+                      borderWidth: 1,
+                      borderColor: COLORS.secondary,
+                    }}>
+                    <Text
+                      style={{
+                        fontFamily: FONTS.medium,
+                        fontSize: scale(12),
+                        color: COLORS.textPrimary,
+                      }}>
+                      Track
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 {activeTab === 'past' && order.status === 'delivered' && (
                   <TouchableOpacity
                     onPress={() => openInvoice(order._id || order.bookingId)}

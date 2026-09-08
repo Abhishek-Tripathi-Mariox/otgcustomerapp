@@ -34,6 +34,32 @@ export interface CheckoutItem {
   quantity: number;
 }
 
+// Mirrors CheckoutDetailsScreen's `BuyerDetails` — kept as a separate,
+// structurally-compatible type here (not imported from the screen) so
+// services don't depend on screens.
+export interface CheckoutBuyerDetails {
+  accountType: 'individual' | 'company';
+  name: string;
+  mobile: string;
+  email?: string;
+  deliveryAddress: string;
+  landmark?: string;
+  city: string;
+  pincode: string;
+  siteContactNumber?: string;
+  designation?: string;
+  employeeId?: string;
+  companyName?: string;
+  gstin?: string;
+  pan?: string;
+  billingAddress?: string;
+  registeredOfficeAddress?: string;
+  companyType?: string;
+  projectName?: string;
+  siteAddress?: string;
+  siteContactPerson?: string;
+}
+
 export interface OrderTrackingStep {
   key: string;
   label: string;
@@ -72,6 +98,7 @@ const orderService = {
     pincode?: string;
     notes?: string;
     couponCode?: string;
+    buyerDetails?: CheckoutBuyerDetails;
   }) =>
     api.post<{
       success: boolean;
@@ -79,6 +106,12 @@ const orderService = {
       data: Order[];
       discountApplied?: number;
     }>('/mobile/orders', payload),
+
+  cancel: (id: string, reason?: string) =>
+    api.post<{success: boolean; message: string; data: Order}>(
+      `/mobile/orders/${id}/cancel`,
+      {reason},
+    ),
 };
 
 export default orderService;

@@ -17,6 +17,7 @@ import catalogService, {
   Faq,
 } from '../services/catalogService';
 import {showAppAlert} from '../components/AlertProvider';
+import {HeaderCartButton} from '../components';
 import orderService from '../services/orderService';
 import Svg, {
   Path,
@@ -34,6 +35,7 @@ import {
   ChevronDownIcon,
   MinusIcon,
   PlusIcon,
+  InfoIcon,
 } from '../components/icons';
 import {
   useAppDispatch,
@@ -227,6 +229,7 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   const [loadingDetail, setLoadingDetail] = useState(!initialMaterial);
   const [relatedProducts, setRelatedProducts] = useState<Material[]>([]);
   const [shareVisible, setShareVisible] = useState(false);
+  const [priceSummaryExpanded, setPriceSummaryExpanded] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [pinCode, setPinCode] = useState('201309');
@@ -435,7 +438,7 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
       ...cartItemFromMaterial(material, quantity),
       quantity,
     };
-    navigation?.navigate('PaymentMethod', {buyNowItem: item});
+    navigation?.navigate('CheckoutDetails', {buyNowItem: item});
   };
 
   // Quote-only materials (e.g. steel, sold at live rates) skip the
@@ -524,28 +527,32 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
           }}>
           Product Details
         </Text>
-        <TouchableOpacity
-          onPress={() => setShareVisible(true)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderRadius: scale(20),
-            borderWidth: 1,
-            borderColor: COLORS.border,
-            paddingHorizontal: scale(12),
-            paddingVertical: scale(6),
-            gap: scale(6),
-          }}>
-          <Text
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <TouchableOpacity
+            onPress={() => setShareVisible(true)}
             style={{
-              fontFamily: FONTS.regular,
-              fontSize: scale(12),
-              color: COLORS.textPrimary,
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderRadius: scale(20),
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingHorizontal: scale(12),
+              paddingVertical: scale(6),
+              gap: scale(6),
+              marginRight: scale(12),
             }}>
-            Share
-          </Text>
-          <WhatsAppIcon />
-        </TouchableOpacity>
+            <Text
+              style={{
+                fontFamily: FONTS.regular,
+                fontSize: scale(12),
+                color: COLORS.textPrimary,
+              }}>
+              Share
+            </Text>
+            <WhatsAppIcon />
+          </TouchableOpacity>
+          <HeaderCartButton style={{marginRight: 0}} />
+        </View>
       </View>
 
       <ScrollView
@@ -759,54 +766,52 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
                 backgroundColor: COLORS.backgroundWhite,
                 padding: scale(14),
               }}>
-              <Text
+              <TouchableOpacity
+                onPress={() => setPriceSummaryExpanded(v => !v)}
+                activeOpacity={0.7}
                 style={{
-                  fontFamily: FONTS.semiBold,
-                  fontSize: scale(14),
-                  color: COLORS.textPrimary,
-                  marginBottom: scale(10),
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: priceSummaryExpanded ? scale(10) : 0,
                 }}>
-                Price Summary
-              </Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: scale(6)}}>
+                  <Text
+                    style={{
+                      fontFamily: FONTS.semiBold,
+                      fontSize: scale(14),
+                      color: COLORS.textPrimary,
+                    }}>
+                    Price Summary
+                  </Text>
+                  <InfoIcon />
+                </View>
+                <View
+                  style={{
+                    transform: [
+                      {rotate: priceSummaryExpanded ? '180deg' : '0deg'},
+                    ],
+                  }}>
+                  <ChevronDownIcon />
+                </View>
+              </TouchableOpacity>
 
-              <PriceRow
-                label="Basic Price:"
-                value={formatCurrency(basicPrice)}
-              />
-              <PriceRow
-                label={`GST (${gstRate}%):`}
-                value={`+ ${formatCurrency(gstOnBasic)}`}
-              />
-              <PriceRow
-                label="MRP (incl. GST):"
-                value={formatCurrency(mrp)}
-                emphasis
-              />
-
-              <View
-                style={{
-                  height: 1,
-                  backgroundColor: COLORS.divider,
-                  marginVertical: scale(8),
-                }}
-              />
-
-              <PriceRow
-                label="Selling Price:"
-                value={formatCurrency(sellingPriceExGst)}
-              />
-              <PriceRow
-                label={`GST on Selling Price (${gstRate}%):`}
-                value={`+ ${formatCurrency(gstOnSelling)}`}
-              />
-              <PriceRow
-                label="Selling Price (SP):"
-                value={formatCurrency(sellingPrice)}
-                emphasis
-              />
-
-              {showConvenienceFee && (
+              {priceSummaryExpanded && (
                 <>
+                  <PriceRow
+                    label="Basic Price:"
+                    value={formatCurrency(basicPrice)}
+                  />
+                  <PriceRow
+                    label={`GST (${gstRate}%):`}
+                    value={`+ ${formatCurrency(gstOnBasic)}`}
+                  />
+                  <PriceRow
+                    label="MRP (incl. GST):"
+                    value={formatCurrency(mrp)}
+                    emphasis
+                  />
+
                   <View
                     style={{
                       height: 1,
@@ -814,19 +819,45 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
                       marginVertical: scale(8),
                     }}
                   />
+
                   <PriceRow
-                    label="Convenience Fee:"
-                    value={`${formatCurrency(convenienceFeeCharge)}${convenienceFeeSuffix}`}
+                    label="Selling Price:"
+                    value={formatCurrency(sellingPriceExGst)}
                   />
                   <PriceRow
-                    label={`GST on Convenience Fee (${gstRate}%):`}
-                    value={`+ ${formatCurrency(gstOnConvenienceFee)}${convenienceFeeSuffix}`}
+                    label={`GST on Selling Price (${gstRate}%):`}
+                    value={`+ ${formatCurrency(gstOnSelling)}`}
                   />
                   <PriceRow
-                    label="Convenience Fee (incl. GST):"
-                    value={`${formatCurrency(convenienceFeeCharge + gstOnConvenienceFee)}${convenienceFeeSuffix}`}
+                    label="Selling Price (SP):"
+                    value={formatCurrency(sellingPrice)}
                     emphasis
                   />
+
+                  {showConvenienceFee && (
+                    <>
+                      <View
+                        style={{
+                          height: 1,
+                          backgroundColor: COLORS.divider,
+                          marginVertical: scale(8),
+                        }}
+                      />
+                      <PriceRow
+                        label="Convenience Fee:"
+                        value={`${formatCurrency(convenienceFeeCharge)}${convenienceFeeSuffix}`}
+                      />
+                      <PriceRow
+                        label={`GST on Convenience Fee (${gstRate}%):`}
+                        value={`+ ${formatCurrency(gstOnConvenienceFee)}${convenienceFeeSuffix}`}
+                      />
+                      <PriceRow
+                        label="Convenience Fee (incl. GST):"
+                        value={`${formatCurrency(convenienceFeeCharge + gstOnConvenienceFee)}${convenienceFeeSuffix}`}
+                        emphasis
+                      />
+                    </>
+                  )}
                 </>
               )}
             </View>

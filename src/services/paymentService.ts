@@ -1,5 +1,5 @@
 import api from './api';
-import {CheckoutItem, Order} from './orderService';
+import {CheckoutItem, CheckoutBuyerDetails, Order} from './orderService';
 
 export interface RazorpayOrderPayload {
   items: CheckoutItem[];
@@ -8,6 +8,7 @@ export interface RazorpayOrderPayload {
   notes?: string;
   couponCode?: string;
   paymentMethod?: string;
+  buyerDetails?: CheckoutBuyerDetails;
 }
 
 export interface RazorpayOrderResponse {

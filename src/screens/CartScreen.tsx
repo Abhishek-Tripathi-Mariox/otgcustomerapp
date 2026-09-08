@@ -683,7 +683,7 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
           }}>
           <PrimaryButton
             title="Confirm & Checkout"
-            onPress={() => navigation?.navigate('PaymentMethod')}
+            onPress={() => navigation?.navigate('CheckoutDetails')}
           />
         </View>
         )}

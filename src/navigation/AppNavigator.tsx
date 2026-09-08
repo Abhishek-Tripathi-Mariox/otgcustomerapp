@@ -10,6 +10,7 @@ import SingleCategoryScreen from '../screens/SingleCategoryScreen';
 import AllBrandsScreen from '../screens/AllBrandsScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import CartScreen from '../screens/CartScreen';
+import CheckoutDetailsScreen, {BuyerDetails} from '../screens/CheckoutDetailsScreen';
 import PaymentMethodScreen from '../screens/PaymentMethodScreen';
 import GetQuotationScreen from '../screens/GetQuotationScreen';
 import SavedAddressScreen from '../screens/SavedAddressScreen';
@@ -31,6 +32,19 @@ export type RootStackParamList = {
   AllBrands: undefined;
   ProductDetail: {productName?: string};
   Cart: undefined;
+  CheckoutDetails: {
+    buyNowItem?: {
+      id: string;
+      name: string;
+      quantity: number;
+      price: number;
+      mrp?: number;
+      gst?: number;
+      unit?: string;
+      image?: {uri: string};
+      brand?: string;
+    };
+  } | undefined;
   PaymentMethod: {
     buyNowItem?: {
       id: string;
@@ -43,6 +57,7 @@ export type RootStackParamList = {
       image?: {uri: string};
       brand?: string;
     };
+    buyerDetails?: BuyerDetails;
   } | undefined;
   GetQuotation: {isLoggedIn?: boolean};
   SavedAddress: undefined;
@@ -73,6 +88,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="AllBrands" component={AllBrandsScreen} />
         <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
         <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="CheckoutDetails" component={CheckoutDetailsScreen} />
         <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
         <Stack.Screen name="GetQuotation" component={GetQuotationScreen} />
         <Stack.Screen name="SavedAddress" component={SavedAddressScreen} />

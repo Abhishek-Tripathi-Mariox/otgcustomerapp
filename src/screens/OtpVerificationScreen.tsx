@@ -132,6 +132,10 @@ const OtpVerificationScreen: React.FC<{navigation?: any; route?: any}> = ({
       setOtp(Array(OTP_LENGTH).fill(''));
       setFocusedIndex(0);
       inputRefs.current[0]?.focus();
+      showAppAlert({
+        title: 'OTP Sent',
+        message: 'A new OTP has been sent to your mobile number.',
+      });
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Failed to resend OTP. Please try again.';
