@@ -18,6 +18,7 @@ import {
   syncUserAddressToSavedAddresses,
 } from '../store';
 import authService from '../services/authService';
+import {registerPushToken} from '../services/pushNotifications';
 
 const splashBg = require('../assets/images/splash-bg.png');
 
@@ -60,6 +61,7 @@ const SplashScreen: React.FC<{navigation?: any}> = ({navigation}) => {
           if (response.data.success) {
             const fetchedUser = response.data.data;
             dispatch(loginSuccess({token, user: fetchedUser}));
+            registerPushToken(); // fire-and-forget — never blocks navigation
             if (fetchedUser?.address) {
               dispatch(syncUserAddressToSavedAddresses(fetchedUser.address));
             }

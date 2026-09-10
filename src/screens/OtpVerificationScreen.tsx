@@ -17,6 +17,7 @@ import authService from '../services/authService';
 import {useAppDispatch} from '../store';
 import {loginSuccess, syncUserAddressToSavedAddresses} from '../store';
 import {showAppAlert} from '../components/AlertProvider';
+import {registerPushToken} from '../services/pushNotifications';
 
 const backArrow = require('../assets/images/back-arrow.png');
 
@@ -109,6 +110,7 @@ const OtpVerificationScreen: React.FC<{navigation?: any; route?: any}> = ({
         const {token, user} = response.data.data;
         await AsyncStorage.setItem('userToken', token);
         dispatch(loginSuccess({token, user}));
+        registerPushToken(); // fire-and-forget — never blocks navigation
         if (user?.address) {
           dispatch(syncUserAddressToSavedAddresses(user.address));
         }

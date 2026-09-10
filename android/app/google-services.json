@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "883596654821",
+    "project_id": "otg-on-the-go-f6558",
+    "storage_bucket": "otg-on-the-go-f6558.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:883596654821:android:4c31e972a0520951d8fc0c",
+        "android_client_info": {
+          "package_name": "com.otgcustomerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbm96Q13IZkekx2NAtxsX3n4R2FIEO2ts"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:883596654821:android:cc012b4c8e2d89f4d8fc0c",
+        "android_client_info": {
+          "package_name": "com.otgdriverapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbm96Q13IZkekx2NAtxsX3n4R2FIEO2ts"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:883596654821:android:d4085176f2fc90cdd8fc0c",
+        "android_client_info": {
+          "package_name": "com.otgvendorapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbm96Q13IZkekx2NAtxsX3n4R2FIEO2ts"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
