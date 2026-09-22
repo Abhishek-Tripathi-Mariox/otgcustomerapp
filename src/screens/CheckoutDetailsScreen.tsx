@@ -1,11 +1,13 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, TextInput, TouchableOpacity, ScrollView} from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 import {scale} from '../utils/scale';
 import {COLORS} from '../constants/colors';
 import {FONTS} from '../constants/fonts';
 import {ScreenHeader, PrimaryButton} from '../components';
 import {showAppAlert} from '../components/AlertProvider';
 import authService from '../services/authService';
+import addressService, {ApiAddress} from '../services/addressService';
 
 export interface BuyerDetails {
   accountType: 'individual' | 'company';
@@ -128,6 +130,8 @@ const CheckoutDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   const buyNowItem = route?.params?.buyNowItem;
   const [form, setForm] = useState<BuyerDetails>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const [savedSites, setSavedSites] = useState<ApiAddress[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -145,8 +149,118 @@ const CheckoutDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
     })();
   }, []);
 
+  // Reload on every focus so a site added via "+ Add New Site" (which
+  // navigates to SavedAddressScreen and back) shows up without extra steps.
+  useFocusEffect(
+    useCallback(() => {
+      addressService
+        .list()
+        .then(res => {
+          if (res.data?.success) setSavedSites(res.data.data || []);
+        })
+        .catch(() => {
+          // Saved sites are a convenience, not required to check out.
+        });
+    }, []),
+  );
+
   const set = (key: keyof BuyerDetails) => (value: string) =>
     setForm(prev => ({...prev, [key]: value}));
+
+  const applySite = (site: ApiAddress) => {
+    setSelectedSiteId(site._id);
+    const addressText =
+      site.line ||
+      [site.houseNo, site.street, site.city, site.state, site.pincode]
+        .filter(Boolean)
+        .join(', ');
+    setForm(prev => ({
+      ...prev,
+      deliveryAddress: addressText,
+      siteAddress: addressText,
+      landmark: site.landmark || prev.landmark,
+      city: site.city || prev.city,
+      pincode: site.pincode || prev.pincode,
+      siteContactNumber: site.phone || prev.siteContactNumber,
+    }));
+  };
+
+  const SavedSitesPicker = (
+    <View style={{marginBottom: scale(20)}}>
+      <Text
+        style={{
+          fontFamily: FONTS.medium,
+          fontSize: scale(13),
+          color: COLORS.textSecondary,
+          marginBottom: scale(8),
+        }}>
+        Select a saved site
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={{flexDirection: 'row', gap: scale(8)}}>
+          {savedSites.map(site => {
+            const active = selectedSiteId === site._id;
+            return (
+              <TouchableOpacity
+                key={site._id}
+                onPress={() => applySite(site)}
+                style={{
+                  paddingHorizontal: scale(14),
+                  paddingVertical: scale(10),
+                  borderRadius: scale(10),
+                  borderWidth: 1,
+                  borderColor: active ? COLORS.primary : COLORS.border,
+                  backgroundColor: active
+                    ? COLORS.primary
+                    : COLORS.backgroundWhite,
+                  maxWidth: scale(180),
+                }}>
+                <Text
+                  style={{
+                    fontFamily: FONTS.semiBold,
+                    fontSize: scale(12),
+                    color: active ? COLORS.secondary : COLORS.textPrimary,
+                  }}>
+                  {site.label || 'Site'}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontFamily: FONTS.regular,
+                    fontSize: scale(11),
+                    color: active ? COLORS.secondary : COLORS.textSecondary,
+                    marginTop: scale(2),
+                  }}>
+                  {site.line}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            onPress={() => navigation?.navigate('SavedAddress')}
+            style={{
+              paddingHorizontal: scale(14),
+              paddingVertical: scale(10),
+              borderRadius: scale(10),
+              borderWidth: 1,
+              borderColor: COLORS.primary,
+              borderStyle: 'dashed',
+              backgroundColor: COLORS.backgroundWhite,
+              justifyContent: 'center',
+            }}>
+            <Text
+              style={{
+                fontFamily: FONTS.semiBold,
+                fontSize: scale(12),
+                color: COLORS.primary,
+              }}>
+              + Add New Site
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
 
   const handleContinue = () => {
     const missing: string[] = [];
@@ -209,6 +323,8 @@ const CheckoutDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
           Please confirm who this order is for, so we can generate the
           correct delivery and invoice details.
         </Text>
+
+        {SavedSitesPicker}
 
         {/* Individual / Company toggle */}
         <View

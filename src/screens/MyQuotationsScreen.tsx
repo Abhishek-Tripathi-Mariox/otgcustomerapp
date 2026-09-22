@@ -18,6 +18,7 @@ import {showAppAlert} from '../components/AlertProvider';
 
 interface Props {
   navigation?: any;
+  route?: {params?: {focusId?: string}};
 }
 
 const STATUS_STYLES: Record<
@@ -27,11 +28,16 @@ const STATUS_STYLES: Record<
   new: {bg: '#DBEAFE', text: '#1D4ED8', label: 'Waiting for quote'},
   quoted: {bg: '#FFEDD5', text: '#C2410C', label: 'Quote received'},
   accepted: {bg: '#DCFCE7', text: '#15803D', label: 'Accepted'},
+  procurement: {bg: '#CCFBF1', text: '#0F766E', label: 'In Procurement'},
   rejected: {bg: '#FEE2E2', text: '#B91C1C', label: 'Rejected'},
   expired: {bg: '#F3F4F6', text: '#6B7280', label: 'Expired'},
 };
 
-const MyQuotationsScreen: React.FC<Props> = ({navigation}) => {
+const MyQuotationsScreen: React.FC<Props> = ({navigation, route}) => {
+  // Set when opened from a push notification tap (see pushNotifications.ts's
+  // navigateForData) — highlights the specific quotation the push was about,
+  // since this screen otherwise has no per-item detail view to deep-link to.
+  const focusId = route?.params?.focusId;
   const [list, setList] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -174,14 +180,17 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation}) => {
           ) : (
             list.map((q) => {
               const s = STATUS_STYLES[q.status] || STATUS_STYLES.new;
+              const isFocused = focusId != null && q._id === focusId;
               return (
                 <View
                   key={q._id}
                   style={{
-                    backgroundColor: COLORS.backgroundWhite,
+                    backgroundColor: isFocused
+                      ? '#FFF7ED'
+                      : COLORS.backgroundWhite,
                     borderRadius: scale(10),
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
+                    borderWidth: isFocused ? 2 : 1,
+                    borderColor: isFocused ? COLORS.primary : COLORS.border,
                     padding: scale(14),
                     marginBottom: scale(10),
                   }}>
@@ -404,11 +413,12 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation}) => {
                     </View>
                   )}
 
-                  {/* View / download the quotation PDF uploaded by admin */}
-                  {q.quotationPdf?.url && (
+                  {/* View / download OTG's formal quotation document (admin's
+                      upload — separate from the customer's own RFQ file). */}
+                  {q.otgQuotationPdf?.url && (
                     <TouchableOpacity
                       onPress={async () => {
-                        const url = q.quotationPdf!.url;
+                        const url = q.otgQuotationPdf!.url;
                         try {
                           // openURL directly — canOpenURL returns false for
                           // https on Android 11+ (package visibility).
@@ -435,7 +445,7 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation}) => {
                           fontSize: scale(13),
                           color: COLORS.textPrimary,
                         }}>
-                        View / Download PDF
+                        View / Download OTG Quotation
                       </Text>
                     </TouchableOpacity>
                   )}

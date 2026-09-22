@@ -51,6 +51,14 @@ export interface CartItem {
   // Admin-configured per-material "Convenience Fee" — used to compute the
   // same delivery-type charge the backend adds to the checkout total.
   transportation?: {type?: string; charge?: number};
+  // The vendor the customer explicitly chose for this material via the
+  // region/pincode comparison screen (Section I / F28-34). Carried through
+  // Cart → Checkout → order creation so the resulting Booking is bound to
+  // this vendor at creation and never auto-reassigned. Absent when the
+  // customer didn't use vendor comparison — the order is created unassigned
+  // for admin to allocate a vendor manually.
+  vendorId?: string;
+  vendorName?: string;
 }
 
 /**
@@ -61,6 +69,7 @@ export interface CartItem {
 export const cartItemFromMaterial = (
   material: any,
   quantity = 1,
+  vendor?: {vendorId?: string; vendorName?: string},
 ): CartItem => ({
   id: material._id,
   name: material.name,
@@ -75,6 +84,8 @@ export const cartItemFromMaterial = (
   category: material.category?.name,
   subCategory: material.subCategory?.name,
   transportation: material.transportation,
+  vendorId: vendor?.vendorId,
+  vendorName: vendor?.vendorName,
 });
 
 interface AppState {

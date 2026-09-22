@@ -18,7 +18,24 @@ export interface Order {
   unit: string;
   price: number;
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+  // Full raw BookingStatus set (Booking.model.ts) — the list endpoint
+  // returns the raw status unmapped (.lean(), no formatting), so this must
+  // match the backend enum exactly, not a narrowed subset.
+  status:
+    | 'pending'
+    | 'accepted'
+    | 'confirmed'
+    | 'qc_pending'
+    | 'qc_approved'
+    | 'qc_rejected'
+    | 'packed'
+    | 'dispatched'
+    | 'in_transit'
+    | 'delivered'
+    | 'cancelled'
+    // The assigned vendor rejected the order — needs admin resolution
+    // (Section I / Phase 7), not an automatic reassignment.
+    | 'vendor_rejected';
   paymentStatus: 'pending' | 'partial' | 'completed';
   paymentMethod?: string;
   site?: string;
@@ -32,6 +49,10 @@ export interface Order {
 export interface CheckoutItem {
   materialId: string;
   quantity: number;
+  // Vendor explicitly selected for this material (Section I / F28-34) — the
+  // resulting Booking is bound to this vendor at creation. Omitted lines
+  // are created unassigned for admin to allocate a vendor manually.
+  vendorId?: string;
 }
 
 // Mirrors CheckoutDetailsScreen's `BuyerDetails` — kept as a separate,

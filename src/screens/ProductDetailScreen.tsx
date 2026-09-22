@@ -237,6 +237,30 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   const [feedbackText, setFeedbackText] = useState('');
   const [hasOrderedProduct, setHasOrderedProduct] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
+  // Vendor chosen on VendorComparisonScreen (Section I / F28-34) — that
+  // screen navigates back here with these params set. Cleared if the
+  // customer changes quantity/product away from what was compared? No —
+  // kept until they explicitly re-open comparison, since it's still valid
+  // for this same material.
+  const [selectedVendor, setSelectedVendor] = useState<
+    {vendorId: string; vendorName: string} | null
+  >(
+    route?.params?.selectedVendorId
+      ? {
+          vendorId: route.params.selectedVendorId,
+          vendorName: route.params.selectedVendorName || 'Selected vendor',
+        }
+      : null,
+  );
+
+  useEffect(() => {
+    if (route?.params?.selectedVendorId) {
+      setSelectedVendor({
+        vendorId: route.params.selectedVendorId,
+        vendorName: route.params.selectedVendorName || 'Selected vendor',
+      });
+    }
+  }, [route?.params?.selectedVendorId, route?.params?.selectedVendorName]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
   const [faqs, setFaqs] = useState<Faq[]>([]);
@@ -422,7 +446,7 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
     // a brand-new line item — the reducer adds quantities together).
     dispatch(
       addCartItem({
-        ...cartItemFromMaterial(material, quantity),
+        ...cartItemFromMaterial(material, quantity, selectedVendor || undefined),
         quantity,
       }),
     );
@@ -435,7 +459,7 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   const handleBuyNow = () => {
     if (!material) return;
     const item = {
-      ...cartItemFromMaterial(material, quantity),
+      ...cartItemFromMaterial(material, quantity, selectedVendor || undefined),
       quantity,
     };
     navigation?.navigate('CheckoutDetails', {buyNowItem: item});
@@ -1072,6 +1096,69 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
           </Text>
           <UpiIcon />
         </TouchableOpacity>
+        )}
+
+        {/* Region/pincode vendor comparison (F28-34) */}
+        {!requiresQuote && material?._id && (
+          <View
+            style={{
+              marginHorizontal: scale(16),
+              marginTop: scale(10),
+              alignItems: 'center',
+            }}>
+            {selectedVendor && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: scale(6),
+                  backgroundColor: '#DCFCE7',
+                  paddingHorizontal: scale(10),
+                  paddingVertical: scale(5),
+                  borderRadius: scale(14),
+                  marginBottom: scale(6),
+                }}>
+                <Text
+                  style={{
+                    fontFamily: FONTS.medium,
+                    fontSize: scale(12),
+                    color: '#15803D',
+                  }}>
+                  Sourcing from {selectedVendor.vendorName}
+                </Text>
+                <TouchableOpacity onPress={() => setSelectedVendor(null)}>
+                  <Text
+                    style={{
+                      fontFamily: FONTS.medium,
+                      fontSize: scale(12),
+                      color: '#15803D',
+                      textDecorationLine: 'underline',
+                    }}>
+                    Change
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={() =>
+                navigation?.navigate('VendorComparison', {
+                  materialId: material._id,
+                  materialName: material.name,
+                })
+              }>
+              <Text
+                style={{
+                  fontFamily: FONTS.medium,
+                  fontSize: scale(13),
+                  color: COLORS.primary,
+                  textDecorationLine: 'underline',
+                }}>
+                {selectedVendor
+                  ? 'Compare other vendors'
+                  : 'Compare vendors near you'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Delivery Info */}

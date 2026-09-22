@@ -20,20 +20,51 @@ import {FONTS} from '../constants/fonts';
 import orderService, {Order} from '../services/orderService';
 import {formatCurrency} from '../utils/currency';
 
-const ONGOING_STATUSES: Order['status'][] = ['pending', 'confirmed', 'in_transit'];
+// Matches the backend's own status === "ongoing" filter set exactly
+// (mobileOrders.controller.ts's listMyOrders) — previously only had
+// pending/confirmed/in_transit, so an order fell into Past the moment a
+// vendor accepted it (or moved through QC/packing/dispatch), well before
+// it was anywhere near delivered.
+const ONGOING_STATUSES: Order['status'][] = [
+  'pending',
+  'accepted',
+  'confirmed',
+  'qc_pending',
+  'qc_approved',
+  'qc_rejected',
+  'packed',
+  'dispatched',
+  'in_transit',
+  // Needs admin resolution, not a final state (Section I / Phase 7).
+  'vendor_rejected',
+];
 
 const statusLabel = (s: Order['status']): string => {
   switch (s) {
     case 'pending':
       return 'Pending';
+    case 'accepted':
+      return 'Accepted';
     case 'confirmed':
       return 'Confirmed';
+    case 'qc_pending':
+      return 'Quality Check';
+    case 'qc_approved':
+      return 'QC Approved';
+    case 'qc_rejected':
+      return 'QC Rejected';
+    case 'packed':
+      return 'Packed';
+    case 'dispatched':
+      return 'Dispatched';
     case 'in_transit':
       return 'In Transit';
     case 'delivered':
       return 'Delivered';
     case 'cancelled':
       return 'Cancelled';
+    case 'vendor_rejected':
+      return "We're reassigning your order";
     default:
       return s;
   }
@@ -44,8 +75,12 @@ const statusColor = (s: Order['status']): string => {
     case 'delivered':
       return COLORS.success;
     case 'cancelled':
+    case 'qc_rejected':
+    case 'vendor_rejected':
       return COLORS.error;
     case 'in_transit':
+    case 'dispatched':
+    case 'packed':
       return COLORS.warning;
     default:
       return COLORS.textPrimary;

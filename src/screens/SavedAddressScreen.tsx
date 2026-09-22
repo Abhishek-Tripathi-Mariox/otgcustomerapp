@@ -69,19 +69,22 @@ const emptyForm = (): FormState => ({
   isPrimary: false,
 });
 
-// The backend stores each address as a single `line` string (+ label/lat/lng/
-// isDefault). The local SavedAddress shape is structured, so we keep the full
-// address text in `street` and leave the other structured fields empty.
+// The backend now stores the same structured fields this screen's form
+// collects (houseNo/street/city/state/pincode/phone), plus `line` — a
+// derived full-address string kept for display/backward-compat with older
+// records and other code (e.g. Booking.buyerDetails) that wants one string.
+// Fall back to `line` for `street` only for pre-existing records saved
+// before this field split (they'll have city/etc. blank until re-saved).
 const apiToSavedAddress = (a: ApiAddress): SavedAddress => ({
   id: a._id,
   label: a.label || 'Home',
   isPrimary: !!a.isDefault,
-  street: a.line,
-  houseNo: undefined,
-  city: '',
-  state: undefined,
-  pincode: undefined,
-  phone: undefined,
+  street: a.street || a.line,
+  houseNo: a.houseNo,
+  city: a.city || '',
+  state: a.state,
+  pincode: a.pincode,
+  phone: a.phone,
   latitude: a.lat ?? null,
   longitude: a.lng ?? null,
 });
@@ -216,6 +219,12 @@ const SavedAddressScreen: React.FC<SavedAddressScreenProps> = ({navigation}) => 
     const payload = {
       label: form.label,
       line: formToLine(form),
+      houseNo: form.houseNo || undefined,
+      street: form.street || undefined,
+      city: form.city || undefined,
+      state: form.state || undefined,
+      pincode: form.pincode || undefined,
+      phone: form.phone || undefined,
       lat: form.latitude,
       lng: form.longitude,
       isDefault: form.isPrimary,
@@ -270,7 +279,15 @@ const SavedAddressScreen: React.FC<SavedAddressScreenProps> = ({navigation}) => 
     try {
       const res = await addressService.update(addr.id, {
         label: addr.label,
-        line: addr.street,
+        line: [addr.houseNo, addr.street, addr.city, addr.state, addr.pincode]
+          .filter(Boolean)
+          .join(', '),
+        houseNo: addr.houseNo,
+        street: addr.street,
+        city: addr.city,
+        state: addr.state,
+        pincode: addr.pincode,
+        phone: addr.phone,
         lat: addr.latitude ?? undefined,
         lng: addr.longitude ?? undefined,
         isDefault: true,

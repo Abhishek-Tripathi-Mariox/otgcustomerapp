@@ -54,7 +54,10 @@ export interface Quotation {
   unit?: string;
   materialRequirement?: string;
   quotationPdf?: {url: string; name?: string; uploadedAt?: string} | null;
-  status: 'new' | 'quoted' | 'accepted' | 'rejected' | 'expired';
+  // Admin's formal quotation document sent back — separate from the
+  // customer's own quotationPdf upload above.
+  otgQuotationPdf?: {url: string; name?: string; uploadedAt?: string} | null;
+  status: 'new' | 'quoted' | 'accepted' | 'procurement' | 'rejected' | 'expired';
   quotedPrice?: number;
   quotedCurrency?: string;
   quotedValidTill?: string;

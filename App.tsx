@@ -7,10 +7,12 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {store} from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
 import {AlertProvider} from './src/components/AlertProvider';
+import {setupNotificationTapHandling} from './src/services/pushNotifications';
 
 function App() {
   useEffect(() => {
     StatusBar.setHidden(true, 'none');
+    setupNotificationTapHandling();
   }, []);
 
   return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import {NavigationContainer, createNavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -22,6 +22,9 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import CmsPageScreen from '../screens/CmsPageScreen';
 import MyQuotationsScreen from '../screens/MyQuotationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import VendorComparisonScreen from '../screens/VendorComparisonScreen';
+import type {CartItem} from '../store';
+
 export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
@@ -33,30 +36,10 @@ export type RootStackParamList = {
   ProductDetail: {productName?: string};
   Cart: undefined;
   CheckoutDetails: {
-    buyNowItem?: {
-      id: string;
-      name: string;
-      quantity: number;
-      price: number;
-      mrp?: number;
-      gst?: number;
-      unit?: string;
-      image?: {uri: string};
-      brand?: string;
-    };
+    buyNowItem?: CartItem;
   } | undefined;
   PaymentMethod: {
-    buyNowItem?: {
-      id: string;
-      name: string;
-      quantity: number;
-      price: number;
-      mrp?: number;
-      gst?: number;
-      unit?: string;
-      image?: {uri: string};
-      brand?: string;
-    };
+    buyNowItem?: CartItem;
     buyerDetails?: BuyerDetails;
   } | undefined;
   GetQuotation: {isLoggedIn?: boolean};
@@ -67,15 +50,23 @@ export type RootStackParamList = {
   Help: undefined;
   EditProfile: undefined;
   CmsPage: {slug: string; title?: string};
-  MyQuotations: undefined;
+  // focusId: set when opened from a push notification tap, so the screen can
+  // highlight the specific quotation that push was about.
+  MyQuotations: {focusId?: string} | undefined;
   Settings: undefined;
+  VendorComparison: {materialId: string; materialName?: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Module-level ref so non-component code (pushNotifications.ts's tap
+// handlers) can navigate without needing access to a screen's own
+// `navigation` prop.
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 const AppNavigator: React.FC = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{headerShown: false}}>
@@ -100,6 +91,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="CmsPage" component={CmsPageScreen} />
         <Stack.Screen name="MyQuotations" component={MyQuotationsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="VendorComparison" component={VendorComparisonScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

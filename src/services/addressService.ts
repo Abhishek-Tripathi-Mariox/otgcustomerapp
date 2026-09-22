@@ -4,6 +4,13 @@ export interface ApiAddress {
   _id: string;
   label?: string;
   line: string;
+  houseNo?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  landmark?: string;
+  phone?: string;
   lat?: number;
   lng?: number;
   isDefault?: boolean;
@@ -12,6 +19,13 @@ export interface ApiAddress {
 export interface AddressPayload {
   label?: string;
   line: string;
+  houseNo?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  landmark?: string;
+  phone?: string;
   lat?: number;
   lng?: number;
   isDefault?: boolean;

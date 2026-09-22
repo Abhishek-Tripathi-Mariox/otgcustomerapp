@@ -24,6 +24,7 @@ import {
   selectCartItems,
   selectAppliedOffer,
   clearCart,
+  type CartItem,
 } from '../store';
 import orderService from '../services/orderService';
 import paymentService from '../services/paymentService';
@@ -135,20 +136,7 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
   // Buy It Now bypasses the cart — when this is set, use the single item
   // for totals and checkout instead of cart contents, and don't clear cart
   // on success.
-  const buyNowItem = route?.params?.buyNowItem as
-    | {
-        id: string;
-        name: string;
-        quantity: number;
-        price: number;
-        mrp?: number;
-        gst?: number;
-        unit?: string;
-        image?: {uri: string};
-        brand?: string;
-        transportation?: {type?: string; charge?: number};
-      }
-    | undefined;
+  const buyNowItem = route?.params?.buyNowItem as CartItem | undefined;
   const isBuyNow = !!buyNowItem;
   const orderItems = isBuyNow ? [buyNowItem!] : cartItems;
   // Collected on CheckoutDetailsScreen, the mandatory previous step — should
@@ -210,6 +198,7 @@ const PaymentMethodScreen: React.FC<{navigation?: any; route?: any}> = ({
       items: orderItems.map(i => ({
         materialId: i.id,
         quantity: i.quantity,
+        vendorId: i.vendorId,
       })),
       paymentMethod: paymentMethodLabel,
       site: deliverySite,
