@@ -520,6 +520,13 @@ const GetQuotationScreen: React.FC<Props> = ({navigation, route}) => {
         company: company.trim() || undefined,
         address: address.trim() || undefined,
         landmark: landmark.trim() || undefined,
+        // Lets the backend fan the request out to vendors serving this area.
+        // Prefer the saved site's own pincode; otherwise pull the first
+        // 6-digit run out of whatever the customer typed.
+        pincode:
+          primaryAddress?.pincode ||
+          address.trim().match(/\d{6}/)?.[0] ||
+          undefined,
         items: payloadItems,
         materialRequirement: materialReq.trim() || undefined,
         pdf: pdfFile,

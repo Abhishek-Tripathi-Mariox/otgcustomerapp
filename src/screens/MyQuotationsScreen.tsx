@@ -29,6 +29,7 @@ const STATUS_STYLES: Record<
   quoted: {bg: '#FFEDD5', text: '#C2410C', label: 'Quote received'},
   accepted: {bg: '#DCFCE7', text: '#15803D', label: 'Accepted'},
   procurement: {bg: '#CCFBF1', text: '#0F766E', label: 'In Procurement'},
+  completed: {bg: '#D1FAE5', text: '#047857', label: 'Completed'},
   rejected: {bg: '#FEE2E2', text: '#B91C1C', label: 'Rejected'},
   expired: {bg: '#F3F4F6', text: '#6B7280', label: 'Expired'},
 };
@@ -313,7 +314,10 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation, route}) => {
                     </Text>
                   ) : null}
 
-                  {q.status === 'quoted' && q.quotedPrice != null && (
+                  {/* A bulk quote is priced in the attached PDF, so this card
+                      must render for every quoted request — not only the
+                      legacy ones that carry a lump-sum quotedPrice. */}
+                  {q.status === 'quoted' && (
                     <View
                       style={{
                         marginTop: scale(8),
@@ -321,14 +325,16 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation, route}) => {
                         borderRadius: scale(8),
                         padding: scale(10),
                       }}>
-                      <Text
-                        style={{
-                          fontFamily: FONTS.semiBold,
-                          fontSize: scale(15),
-                          color: '#C2410C',
-                        }}>
-                        {formatCurrency(Number(q.quotedPrice))}
-                      </Text>
+                      {q.quotedPrice != null && (
+                        <Text
+                          style={{
+                            fontFamily: FONTS.semiBold,
+                            fontSize: scale(15),
+                            color: '#C2410C',
+                          }}>
+                          {formatCurrency(Number(q.quotedPrice))}
+                        </Text>
+                      )}
                       {q.quotedValidTill && (
                         <Text
                           style={{
@@ -446,6 +452,42 @@ const MyQuotationsScreen: React.FC<Props> = ({navigation, route}) => {
                           color: COLORS.textPrimary,
                         }}>
                         View / Download OTG Quotation
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* OTG -> Customer invoice, uploaded by admin when the bulk
+                      order is closed out. */}
+                  {q.invoicePdf?.url && (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        const url = q.invoicePdf!.url;
+                        try {
+                          await Linking.openURL(url);
+                        } catch {
+                          showAppAlert({
+                            title: 'Invoice',
+                            message:
+                              'Could not open the invoice. Please try again.',
+                          });
+                        }
+                      }}
+                      style={{
+                        marginTop: scale(10),
+                        height: scale(40),
+                        borderRadius: scale(8),
+                        borderWidth: 1,
+                        borderColor: '#047857',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                      <Text
+                        style={{
+                          fontFamily: FONTS.semiBold,
+                          fontSize: scale(13),
+                          color: '#047857',
+                        }}>
+                        View / Download Invoice
                       </Text>
                     </TouchableOpacity>
                   )}

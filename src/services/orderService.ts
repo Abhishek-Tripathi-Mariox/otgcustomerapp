@@ -75,6 +75,7 @@ export interface CheckoutBuyerDetails {
   pan?: string;
   billingAddress?: string;
   registeredOfficeAddress?: string;
+  incorporationCertificate?: string;
   companyType?: string;
   projectName?: string;
   siteAddress?: string;

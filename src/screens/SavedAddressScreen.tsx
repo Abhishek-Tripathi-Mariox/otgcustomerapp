@@ -208,10 +208,16 @@ const SavedAddressScreen: React.FC<SavedAddressScreenProps> = ({navigation}) => 
       showAppAlert({title: 'Missing fields', message: 'Please enter street and city.'});
       return;
     }
-    if (form.latitude == null || form.longitude == null) {
+    // A customer adds sites for projects they are NOT standing at — a
+    // warehouse, a client's plot, a site in another city — so GPS must stay
+    // optional. "Use current location" remains the fast path when they ARE
+    // on site; typing the address is equally valid, and the backend has
+    // always accepted an address with no coordinates.
+    if (!/^\d{6}$/.test(form.pincode.trim())) {
       showAppAlert({
-        title: 'Location required',
-        message: 'Tap "Use current location" to attach lat/long to this address.',
+        title: 'Pincode required',
+        message:
+          'Please enter a 6-digit pincode so we can find vendors who deliver to this site.',
       });
       return;
     }
@@ -225,8 +231,10 @@ const SavedAddressScreen: React.FC<SavedAddressScreenProps> = ({navigation}) => 
       state: form.state || undefined,
       pincode: form.pincode || undefined,
       phone: form.phone || undefined,
-      lat: form.latitude,
-      lng: form.longitude,
+      // Omitted entirely when the site was typed rather than pinned — the
+      // backend only persists lat/lng when they are real numbers.
+      lat: form.latitude ?? undefined,
+      lng: form.longitude ?? undefined,
       isDefault: form.isPrimary,
     };
 
@@ -481,6 +489,17 @@ const SavedAddressScreen: React.FC<SavedAddressScreenProps> = ({navigation}) => 
                   </Text>
                 </TouchableOpacity>
 
+                <Text
+                  style={{
+                    marginTop: scale(6),
+                    fontFamily: FONTS.regular,
+                    fontSize: scale(11),
+                    color: COLORS.textSecondary,
+                  }}>
+                  Optional — you can also just type the address below for a
+                  site you are not at right now.
+                </Text>
+
                 {form.latitude != null && form.longitude != null ? (
                   <Text style={{marginTop: scale(6), fontFamily: FONTS.regular, fontSize: scale(11), color: COLORS.textSecondary}}>
                     Pinned: {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
@@ -532,7 +551,7 @@ const SavedAddressScreen: React.FC<SavedAddressScreenProps> = ({navigation}) => 
                   <View style={{flex: 1, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingBottom: scale(12)}}>
                     <TextInput
                       style={{fontFamily: FONTS.regular, fontSize: scale(14), color: COLORS.textPrimary, padding: 0}}
-                      placeholder="Pincode"
+                      placeholder="Pincode*"
                       placeholderTextColor={COLORS.textPlaceholder}
                       keyboardType="number-pad"
                       maxLength={6}

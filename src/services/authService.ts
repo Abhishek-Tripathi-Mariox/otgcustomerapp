@@ -85,6 +85,24 @@ const authService = {
     api.put('/mobile/auth/fcm-token', {fcmToken}),
 
   logout: () => api.post('/mobile/auth/logout'),
+
+  /**
+   * Uploads a business document (certificate of incorporation) and returns
+   * its public URL, which the caller stores on buyerDetails. Multipart so
+   * React Native can stream the picked file uri directly — no base64.
+   */
+  uploadDocument: (file: {uri: string; name: string; type: string}) => {
+    const form = new FormData();
+    form.append('file', file as any);
+    return api.post<{success: boolean; data: {url: string; name?: string}}>(
+      '/mobile/auth/documents',
+      form,
+      {
+        headers: {'Content-Type': 'multipart/form-data'},
+        timeout: 60000,
+      },
+    );
+  },
 };
 
 export default authService;

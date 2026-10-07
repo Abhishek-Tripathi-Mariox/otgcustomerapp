@@ -48,7 +48,10 @@ export type RootStackParamList = {
   OrderDetails: {orderId?: string};
   TrackOrder: {orderId?: string};
   Help: undefined;
-  EditProfile: undefined;
+  // `firstTime` is set right after a first successful OTP login when the
+  // profile is still empty — the screen then shows a skippable prompt
+  // instead of behaving like a normal edit.
+  EditProfile: {firstTime?: boolean} | undefined;
   CmsPage: {slug: string; title?: string};
   // focusId: set when opened from a push notification tap, so the screen can
   // highlight the specific quotation that push was about.

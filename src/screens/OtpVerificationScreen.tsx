@@ -114,7 +114,16 @@ const OtpVerificationScreen: React.FC<{navigation?: any; route?: any}> = ({
         if (user?.address) {
           dispatch(syncUserAddressToSavedAddresses(user.address));
         }
-        navigation?.replace('Home');
+        // Soft profile prompt: a first-time customer with no name/email on
+        // record lands on the profile screen, but can skip it and browse.
+        // The hard requirement still lives at checkout, where the order
+        // actually needs these details.
+        const needsProfile = !user?.name || !user?.email;
+        if (needsProfile) {
+          navigation?.replace('EditProfile', {firstTime: true});
+        } else {
+          navigation?.replace('Home');
+        }
       }
     } catch (error: any) {
       const message =

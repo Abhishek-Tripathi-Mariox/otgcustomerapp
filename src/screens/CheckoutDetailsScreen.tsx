@@ -9,6 +9,16 @@ import {showAppAlert} from '../components/AlertProvider';
 import authService from '../services/authService';
 import addressService, {ApiAddress} from '../services/addressService';
 
+// Same guarded lazy-load as GetQuotationScreen — the native module may not
+// be linked in an older build, and the certificate is optional anyway.
+let DocPicker: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  DocPicker = require('@react-native-documents/picker');
+} catch {
+  DocPicker = null;
+}
+
 export interface BuyerDetails {
   accountType: 'individual' | 'company';
   name: string;
@@ -26,6 +36,8 @@ export interface BuyerDetails {
   pan?: string;
   billingAddress?: string;
   registeredOfficeAddress?: string;
+  // S3 URL returned by POST /mobile/auth/documents
+  incorporationCertificate?: string;
   companyType?:
     | 'Contractor'
     | 'Builder'
@@ -64,6 +76,7 @@ const EMPTY: BuyerDetails = {
   pan: '',
   billingAddress: '',
   registeredOfficeAddress: '',
+  incorporationCertificate: '',
   companyType: undefined,
   projectName: '',
   siteAddress: '',
@@ -132,6 +145,65 @@ const CheckoutDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   const [loading, setLoading] = useState(true);
   const [savedSites, setSavedSites] = useState<ApiAddress[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const [certName, setCertName] = useState<string | null>(null);
+
+  // Picks a certificate of incorporation and uploads it, storing only the
+  // returned URL on the form — the checkout payload stays plain JSON.
+  const handlePickCertificate = async () => {
+    if (!DocPicker) {
+      showAppAlert({
+        title: 'Attachment unavailable',
+        message:
+          'File picking is not available in this build. You can continue without the certificate.',
+      });
+      return;
+    }
+    try {
+      const [picked] = await DocPicker.pick({
+        type: [DocPicker.types.pdf, DocPicker.types.images],
+      });
+      const name = picked.name || 'certificate.pdf';
+      let uri = picked.uri;
+      try {
+        const [copy] = await DocPicker.keepLocalCopy({
+          files: [{uri: picked.uri, fileName: name}],
+          destination: 'cachesDirectory',
+        });
+        if (copy?.status === 'success' && copy.localUri) uri = copy.localUri;
+      } catch {
+        // ignore — use the original picked uri
+      }
+
+      setUploadingCert(true);
+      const res = await authService.uploadDocument({
+        uri,
+        name,
+        type: picked.type || 'application/pdf',
+      });
+      const url = res.data?.data?.url;
+      if (url) {
+        setForm(prev => ({...prev, incorporationCertificate: url}));
+        setCertName(name);
+      }
+    } catch (e: any) {
+      // Cancelling the picker is not an error worth surfacing.
+      if (
+        DocPicker.isErrorWithCode?.(e) &&
+        e.code === DocPicker.errorCodes?.OPERATION_CANCELED
+      ) {
+        return;
+      }
+      showAppAlert({
+        title: 'Could not attach certificate',
+        message:
+          e?.response?.data?.message ||
+          'Something went wrong while uploading. Please try again.',
+      });
+    } finally {
+      setUploadingCert(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -484,6 +556,42 @@ const CheckoutDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
               value={form.registeredOfficeAddress}
               onChangeText={set('registeredOfficeAddress')}
             />
+
+            <Text
+              style={{
+                fontFamily: FONTS.medium,
+                fontSize: scale(13),
+                color: COLORS.textSecondary,
+                marginBottom: scale(8),
+              }}>
+              Certificate of Incorporation
+            </Text>
+            <TouchableOpacity
+              onPress={handlePickCertificate}
+              disabled={uploadingCert}
+              style={{
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                borderRadius: scale(8),
+                paddingVertical: scale(12),
+                paddingHorizontal: scale(12),
+                marginBottom: scale(16),
+              }}>
+              <Text
+                style={{
+                  fontFamily: FONTS.regular,
+                  fontSize: scale(13),
+                  color: form.incorporationCertificate
+                    ? COLORS.textPrimary
+                    : COLORS.textPlaceholder,
+                }}>
+                {uploadingCert
+                  ? 'Uploading...'
+                  : form.incorporationCertificate
+                    ? certName || 'Certificate attached — tap to replace'
+                    : 'Attach PDF / photo (optional)'}
+              </Text>
+            </TouchableOpacity>
 
             <Text
               style={{

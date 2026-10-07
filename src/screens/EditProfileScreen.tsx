@@ -159,7 +159,19 @@ const HomeIcon = () => (
   </Svg>
 );
 
-const EditProfileScreen: React.FC<{navigation?: any}> = ({navigation}) => {
+const EditProfileScreen: React.FC<{navigation?: any; route?: any}> = ({
+  navigation,
+  route,
+}) => {
+  // Set when the screen is shown right after a first OTP login (see
+  // OtpVerificationScreen). There is nothing to go "back" to in that case —
+  // the login screen was replaced — so the header and the post-save action
+  // both go to Home instead, and a Skip affordance is offered.
+  const firstTime = route?.params?.firstTime === true;
+  const leaveProfile = () => {
+    if (firstTime) navigation?.replace('Home');
+    else navigation?.goBack();
+  };
   const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.app.user);
 
@@ -232,7 +244,7 @@ const EditProfileScreen: React.FC<{navigation?: any}> = ({navigation}) => {
       }
 
       Geolocation.getCurrentPosition(
-        async position => {
+        async (position: {coords: {latitude: number; longitude: number}}) => {
           const {latitude: lat, longitude: lon} = position.coords;
           setLatitude(lat);
           setLongitude(lon);
@@ -260,7 +272,7 @@ const EditProfileScreen: React.FC<{navigation?: any}> = ({navigation}) => {
           }
           setFetchingLocation(false);
         },
-        error => {
+        (error: {message?: string}) => {
           setFetchingLocation(false);
           showAlert('Location Error', error.message || 'Could not get your location', 'error');
         },
@@ -379,7 +391,7 @@ const EditProfileScreen: React.FC<{navigation?: any}> = ({navigation}) => {
         }
         showAlert('Success', 'Profile updated successfully', 'success', () => {
           closeAlert();
-          navigation?.goBack();
+          leaveProfile();
         });
       }
     } catch (err: any) {
@@ -420,7 +432,43 @@ const EditProfileScreen: React.FC<{navigation?: any}> = ({navigation}) => {
 
   return (
     <View style={{flex: 1, backgroundColor: COLORS.background}}>
-      <ScreenHeader title="Edit Profile" onBack={() => navigation?.goBack()} />
+      <ScreenHeader
+        title={firstTime ? 'Complete Your Profile' : 'Edit Profile'}
+        onBack={leaveProfile}
+      />
+
+      {firstTime && (
+        <View
+          style={{
+            backgroundColor: '#FFF7ED',
+            paddingHorizontal: scale(16),
+            paddingVertical: scale(12),
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: scale(12),
+          }}>
+          <Text
+            style={{
+              flex: 1,
+              fontFamily: FONTS.regular,
+              fontSize: scale(12),
+              color: '#9A3412',
+            }}>
+            Add your name, email and address now so checkout is quicker later.
+            You can do this any time.
+          </Text>
+          <TouchableOpacity onPress={leaveProfile}>
+            <Text
+              style={{
+                fontFamily: FONTS.semiBold,
+                fontSize: scale(13),
+                color: COLORS.secondary,
+              }}>
+              Skip
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView style={{flex: 1}} showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom: scale(120)}}>
         {/* Profile Photo */}

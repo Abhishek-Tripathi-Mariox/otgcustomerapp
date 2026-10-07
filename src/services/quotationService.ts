@@ -27,6 +27,8 @@ export interface QuotationPayload {
   company?: string;
   address?: string;
   landmark?: string;
+  // Delivery pincode — drives the backend's vendor fan-out for this area.
+  pincode?: string;
   items?: QuotationItem[];
   // Legacy single-item fields (kept for fallback)
   category?: string;
@@ -57,7 +59,17 @@ export interface Quotation {
   // Admin's formal quotation document sent back — separate from the
   // customer's own quotationPdf upload above.
   otgQuotationPdf?: {url: string; name?: string; uploadedAt?: string} | null;
-  status: 'new' | 'quoted' | 'accepted' | 'procurement' | 'rejected' | 'expired';
+  // OTG -> Customer invoice for a completed bulk order.
+  invoicePdf?: {url: string; name?: string; uploadedAt?: string} | null;
+  status:
+    | 'new'
+    | 'quoted'
+    | 'accepted'
+    | 'procurement'
+    | 'rejected'
+    | 'expired'
+    | 'completed';
+  completedAt?: string;
   quotedPrice?: number;
   quotedCurrency?: string;
   quotedValidTill?: string;
@@ -89,6 +101,7 @@ const quotationService = {
     if (rest.company) form.append('company', rest.company);
     if (rest.address) form.append('address', rest.address);
     if (rest.landmark) form.append('landmark', rest.landmark);
+    if (rest.pincode) form.append('pincode', rest.pincode);
     if (rest.materialRequirement)
       form.append('materialRequirement', rest.materialRequirement);
     // Complex fields go as JSON strings; the backend parses them back.
