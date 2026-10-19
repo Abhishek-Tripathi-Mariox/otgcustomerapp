@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -23,14 +23,29 @@ const DeliveryCheckIcon = () => (
 const TimelineCheckIcon = ({completed}: {completed: boolean}) => (
   <Svg width={scale(32)} height={scale(32)} viewBox="0 0 32 32" fill="none">
     <Circle cx={16} cy={16} r={14} fill={completed ? COLORS.success : COLORS.border} />
-    <Path d="M10 16L14 20L22 12" stroke="white" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    {/* Only a finished step gets a tick — drawing it unconditionally made
+        every pending step look done. */}
+    {completed && (
+      <Path d="M10 16L14 20L22 12" stroke="white" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    )}
   </Svg>
 );
 
-const formatStepTime = (iso?: string | null): string => {
-  if (!iso) return 'Pending';
+/**
+ * Subtitle under a timeline step.
+ *
+ * `done` and `at` are independent: a step is "done" by status rank, but its
+ * timestamp only exists if that exact status was ever recorded in
+ * statusHistory. A legally skipped status (e.g. dispatching straight from
+ * qc_approved without a separate `packed` row) is therefore done-but-
+ * undated. Printing the old 'Pending' placeholder in that case told the
+ * customer an already-completed step had not happened yet — which is the
+ * whole "my order still says pending" complaint.
+ */
+const formatStepTime = (iso?: string | null, done = false): string => {
+  if (!iso) return done ? 'Completed' : 'Pending';
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return 'Pending';
+  if (isNaN(d.getTime())) return done ? 'Completed' : 'Pending';
   const time = d.toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
@@ -62,31 +77,36 @@ const TrackOrderScreen: React.FC<{navigation?: any; route?: any}> = ({navigation
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadTracking = useCallback(async () => {
     if (!orderId) {
       setLoading(false);
       setError('Order not specified.');
       return;
     }
-    (async () => {
-      try {
-        const res = await orderService.getTracking(orderId);
-        if (!cancelled) setTracking(res.data.data);
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            err?.response?.data?.message || 'Failed to load order tracking.',
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const res = await orderService.getTracking(orderId);
+      setTracking(res.data.data);
+      setError(null);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message || 'Failed to load order tracking.',
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [orderId]);
+
+  useEffect(() => {
+    loadTracking();
+  }, [loadTracking]);
+
+  // Tracking is the screen a customer reopens precisely to see whether
+  // anything moved, so it must re-fetch on focus rather than serve the
+  // snapshot it loaded the first time.
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => loadTracking());
+    return unsubscribe;
+  }, [navigation, loadTracking]);
 
   const bookingLabel = tracking ? `#${tracking.bookingId}` : '';
   const steps = tracking?.steps || [];
@@ -137,6 +157,32 @@ const TrackOrderScreen: React.FC<{navigation?: any; route?: any}> = ({navigation
         </View>
       ) : (
         <ScrollView style={{flex: 1}} showsVerticalScrollIndicator={false} bounces={false}>
+          {/* Plain-language status line. The step timeline alone cannot show
+              states off the happy path (supplier declined, QC sent back), so
+              those orders used to look like nothing had happened. */}
+          {tracking.statusNote ? (
+            <View
+              style={{
+                marginHorizontal: scale(16),
+                marginTop: scale(16),
+                backgroundColor: tracking.needsAttention ? '#FEF2F2' : '#F0FAF0',
+                borderWidth: 1,
+                borderColor: tracking.needsAttention ? '#FECACA' : '#C8E6C9',
+                borderRadius: scale(12),
+                padding: scale(14),
+              }}>
+              <Text
+                style={{
+                  fontFamily: FONTS.regular,
+                  fontSize: scale(12),
+                  lineHeight: scale(18),
+                  color: tracking.needsAttention ? '#B91C1C' : COLORS.textLight,
+                }}>
+                {tracking.statusNote}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Order Info Card */}
           <View style={{
             marginHorizontal: scale(16),
@@ -240,7 +286,7 @@ const TrackOrderScreen: React.FC<{navigation?: any; route?: any}> = ({navigation
                       {step.label}
                     </Text>
                     <Text style={{fontFamily: FONTS.regular, fontSize: scale(12), color: COLORS.textSecondary, marginTop: scale(2)}}>
-                      {formatStepTime(step.at)}
+                      {formatStepTime(step.at, step.done)}
                     </Text>
                   </View>
                 </View>

@@ -92,6 +92,11 @@ export interface OrderTrackingStep {
 export interface OrderTracking {
   bookingId: string;
   status: Order['status'];
+  // Plain-language line describing where the order actually is — covers
+  // states the step list cannot express (supplier declined, QC sent back).
+  statusNote?: string | null;
+  // True when the state needs attention rather than showing progress.
+  needsAttention?: boolean;
   cancelled: boolean;
   steps: OrderTrackingStep[];
   driver: {name?: string; vehicleNumber?: string} | null;

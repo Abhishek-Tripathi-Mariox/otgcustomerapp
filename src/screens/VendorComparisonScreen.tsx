@@ -14,6 +14,7 @@ import {FONTS} from '../constants/fonts';
 import {showAppAlert} from '../components/AlertProvider';
 import vendorSearchService, {
   MaterialVendorOption,
+  VendorSort,
 } from '../services/vendorSearchService';
 import addressService from '../services/addressService';
 import authService from '../services/authService';
@@ -26,6 +27,14 @@ interface Props {
 const formatCurrency = (n: number | null) =>
   n == null ? '—' : `₹${Math.round(n).toLocaleString('en-IN')}`;
 
+const SORT_OPTIONS: Array<{key: VendorSort; label: string}> = [
+  {key: 'recommended', label: 'Recommended'},
+  {key: 'price_asc', label: 'Price: low to high'},
+  {key: 'price_desc', label: 'Price: high to low'},
+  {key: 'delivery', label: 'Fastest delivery'},
+  {key: 'distance', label: 'Nearest'},
+];
+
 const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
   const materialId = route?.params?.materialId;
   const materialName = route?.params?.materialName || 'this material';
@@ -35,6 +44,10 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<MaterialVendorOption[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Sort + "fast delivery only" are applied server-side so the ordering
+  // matches the backend's own tie-breaking rules.
+  const [sort, setSort] = useState<VendorSort>('recommended');
+  const [fastOnly, setFastOnly] = useState(false);
 
   // Prefill from the customer's default saved site / checkout profile so a
   // returning customer doesn't have to type their pincode every time —
@@ -77,6 +90,7 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
       const res = await vendorSearchService.compareVendorsForMaterial(
         materialId,
         pin,
+        {sort, maxDeliveryHours: fastOnly ? 2 : undefined},
       );
       setResults(res.data.data || []);
       setSearched(true);
@@ -87,13 +101,21 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  }, [materialId, pincode]);
+  }, [materialId, pincode, sort, fastOnly]);
 
   // Auto-search once a pincode is available from prefill.
   useEffect(() => {
     if (pincode && !searched) search();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pincode]);
+
+  // Re-query when the customer changes the ordering or the fast-delivery
+  // filter — but only once they've already run a search, so changing a chip
+  // before entering a pincode doesn't fire a pointless request.
+  useEffect(() => {
+    if (searched) search();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort, fastOnly]);
 
   const handleSelect = (vendor: MaterialVendorOption) => {
     if (!materialId) return;
@@ -104,6 +126,11 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
       productId: materialId,
       selectedVendorId: vendor.vendorId,
       selectedVendorName: vendor.vendorName,
+      // Carry the vendor's own price back so the product page and the cart
+      // show the amount the backend will actually charge for this vendor,
+      // instead of the master catalog price.
+      selectedVendorPrice: vendor.price,
+      selectedVendorDelivery: vendor.deliveryEstimate,
     });
   };
 
@@ -165,6 +192,61 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Sort + filter (items: sort by price, sort/filter by delivery
+            time). Applied server-side so ties break the same way the
+            backend's recommended ordering does. */}
+        {searched && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{gap: scale(8), paddingTop: scale(12)}}>
+            {SORT_OPTIONS.map(opt => {
+              const active = sort === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => setSort(opt.key)}
+                  style={{
+                    paddingHorizontal: scale(12),
+                    paddingVertical: scale(7),
+                    borderRadius: scale(16),
+                    borderWidth: 1,
+                    borderColor: active ? COLORS.primary : COLORS.border,
+                    backgroundColor: active ? COLORS.primary : 'transparent',
+                  }}>
+                  <Text
+                    style={{
+                      fontFamily: active ? FONTS.semiBold : FONTS.regular,
+                      fontSize: scale(12),
+                      color: active ? COLORS.secondary : COLORS.textSecondary,
+                    }}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              onPress={() => setFastOnly(v => !v)}
+              style={{
+                paddingHorizontal: scale(12),
+                paddingVertical: scale(7),
+                borderRadius: scale(16),
+                borderWidth: 1,
+                borderColor: fastOnly ? '#15803D' : COLORS.border,
+                backgroundColor: fastOnly ? '#DCFCE7' : 'transparent',
+              }}>
+              <Text
+                style={{
+                  fontFamily: fastOnly ? FONTS.semiBold : FONTS.regular,
+                  fontSize: scale(12),
+                  color: fastOnly ? '#15803D' : COLORS.textSecondary,
+                }}>
+                Within 2 hrs
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
       </View>
 
       <ScrollView
@@ -267,6 +349,26 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
                   {formatCurrency(v.price)}
                 </Text>
               </View>
+
+              {/* Pivot from "who sells this?" to "what else do they sell?" */}
+              <TouchableOpacity
+                onPress={() =>
+                  navigation?.navigate('VendorProfile', {
+                    vendorId: v.vendorId,
+                    vendorName: v.vendorName,
+                  })
+                }
+                style={{marginTop: scale(8), alignSelf: 'flex-start'}}>
+                <Text
+                  style={{
+                    fontFamily: FONTS.medium,
+                    fontSize: scale(11),
+                    color: COLORS.primary,
+                    textDecorationLine: 'underline',
+                  }}>
+                  View all materials from this supplier
+                </Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           ))
         )}

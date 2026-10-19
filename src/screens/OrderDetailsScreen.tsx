@@ -94,22 +94,49 @@ const formatDate = (iso?: string): string => {
 
 const fmt = formatCurrency;
 
+/**
+ * Every status a vendor, driver or admin can set needs its own line here.
+ * Previously only 5 of the 12 were covered, so the moment a vendor accepted
+ * an order the banner fell through to a bare "Order BK-xx." — the customer
+ * saw LESS information than before the vendor acted, which reads as "nothing
+ * has happened yet".
+ */
 const statusBannerText = (status: Order['status'], bookingId: string): string => {
   switch (status) {
     case 'pending':
       return `Your order (${bookingId}) has been placed and is awaiting confirmation.`;
+    case 'accepted':
     case 'confirmed':
       return `Your order (${bookingId}) is confirmed and being prepared for dispatch.`;
+    case 'qc_pending':
+      return `Your order (${bookingId}) is going through a quality check.`;
+    case 'qc_approved':
+      return `Quality check passed. Your order (${bookingId}) is being packed.`;
+    case 'qc_rejected':
+      return `Quality check on order (${bookingId}) was sent back to the supplier for correction.`;
+    case 'packed':
+      return `Your order (${bookingId}) is packed and awaiting dispatch.`;
+    case 'dispatched':
+      return `Your order (${bookingId}) has been dispatched.`;
     case 'in_transit':
       return `Your order (${bookingId}) is on its way to your address.`;
     case 'delivered':
       return `Your order (${bookingId}) has been delivered successfully.`;
+    case 'vendor_rejected':
+      return `The supplier could not fulfil order (${bookingId}). Our team is assigning a new one.`;
     case 'cancelled':
       return `Your order (${bookingId}) was cancelled.`;
     default:
       return `Order ${bookingId}.`;
   }
 };
+
+// States that need the customer's attention rather than reporting progress —
+// a green tick on "your supplier declined" is simply wrong.
+const isAttentionStatus = (status: Order['status']): boolean =>
+  status === 'cancelled' ||
+  status === 'qc_rejected' ||
+  status === 'vendor_rejected';
 
 const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   navigation,
@@ -183,6 +210,15 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
   useEffect(() => {
     loadOrder();
   }, [loadOrder]);
+
+  // Re-fetch whenever the screen comes back into view. Without this the
+  // screen was a snapshot from the moment it mounted: a vendor could accept,
+  // QC and dispatch the order while the customer kept seeing "awaiting
+  // confirmation". Mirrors the focus refresh on MyOrdersScreen.
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => loadOrder());
+    return unsubscribe;
+  }, [navigation, loadOrder]);
 
   const CANCEL_WINDOW_MS = 15 * 60 * 1000;
   const CANCELLABLE_STATUSES = ['pending', 'accepted', 'confirmed'];
@@ -353,16 +389,20 @@ const OrderDetailsScreen: React.FC<{navigation?: any; route?: any}> = ({
             style={{
               marginHorizontal: scale(16),
               marginTop: scale(16),
-              backgroundColor: '#F0FAF0',
+              backgroundColor: isAttentionStatus(order.status)
+                ? '#FEF2F2'
+                : '#F0FAF0',
               borderRadius: scale(12),
               borderWidth: 1,
-              borderColor: '#C8E6C9',
+              borderColor: isAttentionStatus(order.status)
+                ? '#FECACA'
+                : '#C8E6C9',
               padding: scale(16),
               flexDirection: 'row',
               alignItems: 'flex-start',
               gap: scale(10),
             }}>
-            <CheckCircleIcon />
+            {!isAttentionStatus(order.status) && <CheckCircleIcon />}
             <Text
               style={{
                 flex: 1,

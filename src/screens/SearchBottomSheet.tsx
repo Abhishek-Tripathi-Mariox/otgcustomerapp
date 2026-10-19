@@ -16,6 +16,7 @@ import {COLORS} from '../constants/colors';
 import {FONTS} from '../constants/fonts';
 import {CloseIcon, SearchIcon} from '../components/icons';
 import {formatCurrency} from '../utils/currency';
+import useDeliveryPincode from '../hooks/useDeliveryPincode';
 import catalogService, {Material} from '../services/catalogService';
 
 interface SearchBottomSheetProps {
@@ -34,6 +35,7 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const deliveryPincode = useDeliveryPincode();
 
   // Reset state each time the sheet opens.
   useEffect(() => {
@@ -63,6 +65,9 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
         const res = await catalogService.getMaterials({
           search: trimmed,
           limit: 20,
+          // Adds "from ₹X · N suppliers · ETA" to each result for the
+          // customer's own delivery area.
+          pincode: deliveryPincode,
         });
         if (!cancelled && res.data.success) {
           setResults(res.data.data);
@@ -81,7 +86,7 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, deliveryPincode]);
 
   const handleSelect = (item: Material) => {
     onClose();
@@ -147,17 +152,55 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
               {subLabel}
             </Text>
           ) : null}
-          {item.finalSellingPrice > 0 ? (
-            <Text
-              style={{
-                marginTop: scale(2),
-                fontFamily: FONTS.semiBold,
-                fontSize: scale(13),
-                color: COLORS.textPrimary,
-              }}>
-              {formatCurrency(item.finalSellingPrice)}/{item.unit}
-            </Text>
-          ) : null}
+          {(() => {
+            // With a delivery pincode we can show the real starting price
+            // from suppliers who actually serve that area, instead of the
+            // master catalogue price that may be nobody's actual price.
+            const sum = item.supplierSummary;
+            const hasSuppliers = !!sum && sum.count > 0;
+            const shown =
+              hasSuppliers && sum!.fromPrice != null
+                ? sum!.fromPrice
+                : item.finalSellingPrice;
+            if (!(shown > 0)) return null;
+            return (
+              <>
+                <Text
+                  style={{
+                    marginTop: scale(2),
+                    fontFamily: FONTS.semiBold,
+                    fontSize: scale(13),
+                    color: COLORS.textPrimary,
+                  }}>
+                  {hasSuppliers ? 'from ' : ''}
+                  {formatCurrency(shown)}/{item.unit}
+                </Text>
+                {hasSuppliers ? (
+                  <Text
+                    style={{
+                      marginTop: scale(2),
+                      fontFamily: FONTS.regular,
+                      fontSize: scale(10),
+                      color: '#15803D',
+                    }}>
+                    {sum!.count}{' '}
+                    {sum!.count === 1 ? 'supplier' : 'suppliers'} near you
+                    {sum!.bestEtaLabel ? ` · ${sum!.bestEtaLabel}` : ''}
+                  </Text>
+                ) : sum ? (
+                  <Text
+                    style={{
+                      marginTop: scale(2),
+                      fontFamily: FONTS.regular,
+                      fontSize: scale(10),
+                      color: COLORS.textSecondary,
+                    }}>
+                    No supplier in your area yet
+                  </Text>
+                ) : null}
+              </>
+            );
+          })()}
         </View>
       </TouchableOpacity>
     );

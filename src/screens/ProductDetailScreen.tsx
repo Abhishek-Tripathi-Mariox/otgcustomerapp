@@ -242,13 +242,18 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   // customer changes quantity/product away from what was compared? No —
   // kept until they explicitly re-open comparison, since it's still valid
   // for this same material.
-  const [selectedVendor, setSelectedVendor] = useState<
-    {vendorId: string; vendorName: string} | null
-  >(
+  const [selectedVendor, setSelectedVendor] = useState<{
+    vendorId: string;
+    vendorName: string;
+    price?: number | null;
+    deliveryEstimate?: string | null;
+  } | null>(
     route?.params?.selectedVendorId
       ? {
           vendorId: route.params.selectedVendorId,
           vendorName: route.params.selectedVendorName || 'Selected vendor',
+          price: route.params.selectedVendorPrice,
+          deliveryEstimate: route.params.selectedVendorDelivery,
         }
       : null,
   );
@@ -258,9 +263,16 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
       setSelectedVendor({
         vendorId: route.params.selectedVendorId,
         vendorName: route.params.selectedVendorName || 'Selected vendor',
+        price: route.params.selectedVendorPrice,
+        deliveryEstimate: route.params.selectedVendorDelivery,
       });
     }
-  }, [route?.params?.selectedVendorId, route?.params?.selectedVendorName]);
+  }, [
+    route?.params?.selectedVendorId,
+    route?.params?.selectedVendorName,
+    route?.params?.selectedVendorPrice,
+    route?.params?.selectedVendorDelivery,
+  ]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
   const [faqs, setFaqs] = useState<Faq[]>([]);
@@ -492,9 +504,15 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
     material?.name || route?.params?.productName || 'Product';
   const productImages: string[] =
     material?.images && material.images.length > 0 ? material.images : [];
-  const sellingPrice = material?.finalSellingPrice ?? 0;
+  // A chosen vendor's own OTG->Customer rate wins over the master catalog
+  // price — it is what checkout will actually bill (see computeCartPricing).
+  const sellingPrice =
+    selectedVendor?.price != null
+      ? selectedVendor.price
+      : (material?.finalSellingPrice ?? 0);
   const mrp = material?.mrp ?? 0;
-  const hasDiscount = mrp > 0 && sellingPrice > 0 && sellingPrice < mrp;
+  const hasDiscount =
+    selectedVendor?.price == null && mrp > 0 && sellingPrice > 0 && sellingPrice < mrp;
   const savings = hasDiscount ? mrp - sellingPrice : 0;
   const discountPct = hasDiscount ? Math.round((savings / mrp) * 100) : 0;
 
@@ -504,7 +522,14 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   const sellingPriceExGst = material?.sellingPrice ?? 0;
   const gstOnBasic = basicPrice * (gstRate / 100);
   const gstOnSelling = sellingPriceExGst * (gstRate / 100);
-  const showPriceSummary = basicPrice > 0 || sellingPriceExGst > 0 || mrp > 0;
+  // The breakdown is derived from the master catalog figures, so it does not
+  // reconcile with a vendor-specific rate — hide it rather than show numbers
+  // that don't add up to the price being charged.
+  const vendorPriceOverrides =
+    selectedVendor?.price != null &&
+    selectedVendor.price !== (material?.finalSellingPrice ?? 0);
+  const showPriceSummary =
+    !vendorPriceOverrides && (basicPrice > 0 || sellingPriceExGst > 0 || mrp > 0);
 
   // Convenience fee (per_km / per_unit / fixed) — mirrors admin's breakdown.
   const convenienceFeeType = material?.transportation?.type ?? 'free';
@@ -1125,6 +1150,9 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
                     color: '#15803D',
                   }}>
                   Sourcing from {selectedVendor.vendorName}
+                  {selectedVendor.deliveryEstimate
+                    ? ` · ${selectedVendor.deliveryEstimate}`
+                    : ''}
                 </Text>
                 <TouchableOpacity onPress={() => setSelectedVendor(null)}>
                   <Text

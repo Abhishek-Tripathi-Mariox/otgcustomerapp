@@ -62,6 +62,22 @@ export interface CartItem {
 }
 
 /**
+ * Cart lines are identified by material AND vendor: the same material bought
+ * from two different vendors is two different products at two different
+ * prices, so they must not be merged into one line.
+ */
+export const cartLineKey = (item: {id: string; vendorId?: string}): string =>
+  `${item.id}::${item.vendorId || ''}`;
+
+/**
+ * Resolve a cart line from either a full line key (what the Cart screen
+ * sends, so it can target one vendor's line precisely) or a bare material id
+ * (what the catalog screens send, since they have no vendor context).
+ */
+const findCartLine = (items: CartItem[], ref: string): CartItem | undefined =>
+  items.find(i => cartLineKey(i) === ref) || items.find(i => i.id === ref);
+
+/**
  * Build a CartItem from a Material returned by catalogService.
  * Kept here (and not in catalogService) to avoid a circular import — store
  * already owns the CartItem shape.
@@ -69,14 +85,22 @@ export interface CartItem {
 export const cartItemFromMaterial = (
   material: any,
   quantity = 1,
-  vendor?: {vendorId?: string; vendorName?: string},
+  vendor?: {vendorId?: string; vendorName?: string; price?: number | null},
 ): CartItem => ({
   id: material._id,
   name: material.name,
   brand: material.brand,
   size: material.diameter,
   unit: material.unit,
-  price: material.finalSellingPrice ?? material.sellingPrice ?? 0,
+  // When the customer picked a specific vendor, that vendor's own
+  // OTG->Customer rate is what the backend will charge at checkout
+  // (mobileOrders.controller computeCartPricing). Showing the master catalog
+  // price here instead would make the cart total disagree with the amount
+  // actually billed.
+  price:
+    vendor?.price != null
+      ? vendor.price
+      : (material.finalSellingPrice ?? material.sellingPrice ?? 0),
   mrp: material.mrp,
   gst: material.gst,
   quantity: Math.max(material.minOrderQty || 1, quantity),
@@ -320,7 +344,8 @@ const cartSlice = createSlice({
       state.items = action.payload;
     },
     addCartItem: (state, action: PayloadAction<CartItem>) => {
-      const existing = state.items.find(i => i.id === action.payload.id);
+      const key = cartLineKey(action.payload);
+      const existing = state.items.find(i => cartLineKey(i) === key);
       if (existing) {
         existing.quantity += action.payload.quantity;
       } else {
@@ -332,24 +357,27 @@ const cartSlice = createSlice({
       state,
       action: PayloadAction<{id: string; quantity: number}>,
     ) => {
-      const item = state.items.find(i => i.id === action.payload.id);
+      const item = findCartLine(state.items, action.payload.id);
       if (item) {
         item.quantity = Math.max(1, action.payload.quantity);
       }
       persistCart(state.items);
     },
     incrementCartItem: (state, action: PayloadAction<string>) => {
-      const item = state.items.find(i => i.id === action.payload);
+      const item = findCartLine(state.items, action.payload);
       if (item) item.quantity += 1;
       persistCart(state.items);
     },
     decrementCartItem: (state, action: PayloadAction<string>) => {
-      const item = state.items.find(i => i.id === action.payload);
+      const item = findCartLine(state.items, action.payload);
       if (item) item.quantity = Math.max(1, item.quantity - 1);
       persistCart(state.items);
     },
     removeCartItem: (state, action: PayloadAction<string>) => {
-      state.items = state.items.filter(i => i.id !== action.payload);
+      const target = findCartLine(state.items, action.payload);
+      state.items = target
+        ? state.items.filter(i => i !== target)
+        : state.items;
       persistCart(state.items);
     },
     clearCart: state => {

@@ -469,24 +469,31 @@ const HomeScreen: React.FC<{navigation?: any}> = ({navigation}) => {
 
   // Fetch the user's recent orders so the Track-Your-Order block can show
   // a quick shortcut to the last two.
-  useEffect(() => {
-    let cancelled = false;
+  const loadRecentOrders = useCallback(async () => {
     setLoadingOrders(true);
-    orderService
-      .list('all')
-      .then(res => {
-        if (!cancelled) setRecentOrders((res.data.data || []).slice(0, 2));
-      })
-      .catch(() => {
-        if (!cancelled) setRecentOrders([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingOrders(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const res = await orderService.list('all');
+      setRecentOrders((res.data.data || []).slice(0, 2));
+    } catch {
+      setRecentOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadRecentOrders();
+  }, [loadRecentOrders]);
+
+  // Home is where a customer most often glances at an order's status, so it
+  // must re-fetch on focus — otherwise the status shown here stays frozen at
+  // whatever it was when the app launched.
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () =>
+      loadRecentOrders(),
+    );
+    return unsubscribe;
+  }, [navigation, loadRecentOrders]);
 
   const handleTrackOrder = async () => {
     const trimmed = orderId.trim();

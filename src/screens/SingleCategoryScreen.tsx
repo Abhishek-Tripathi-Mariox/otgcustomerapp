@@ -29,6 +29,7 @@ import {
   PlusIcon,
 } from '../components/icons';
 import {HeaderCartButton, HeaderProfileButton} from '../components';
+import useDeliveryPincode from '../hooks/useDeliveryPincode';
 import catalogService, {SubCategory, Material} from '../services/catalogService';
 import {
   useAppDispatch,
@@ -148,6 +149,7 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
     route?.params?.categoryName || route?.params?.brand || 'Category';
 
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const deliveryPincode = useDeliveryPincode();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [selectedSubCat, setSelectedSubCat] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
@@ -158,8 +160,8 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
     const fetchData = async () => {
       try {
         const baseParams = isBrandMode
-          ? {brand: brandName, limit: 50}
-          : {category: categoryId, limit: 50};
+          ? {brand: brandName, limit: 50, pincode: deliveryPincode}
+          : {category: categoryId, limit: 50, pincode: deliveryPincode};
         const requests: Promise<any>[] = [
           catalogService.getMaterials(baseParams),
         ];
@@ -189,6 +191,7 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
           subCategory: selectedSubCat || undefined,
           search: searchText.trim() || undefined,
           limit: 50,
+          pincode: deliveryPincode,
         });
         if (res.data.success) setMaterials(res.data.data);
       } catch {
@@ -209,6 +212,7 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
           subCategory: selectedSubCat || undefined,
           search: searchText.trim() || undefined,
           limit: 50,
+          pincode: deliveryPincode,
         });
         if (res.data.success) setMaterials(res.data.data);
       } catch {
@@ -296,8 +300,34 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
             }}>
             {item.requestQuote
               ? 'Price on request'
-              : `${formatCurrency(item.finalSellingPrice)}/${item.unit}`}
+              : item.supplierSummary?.count && item.supplierSummary.fromPrice != null
+                ? `from ${formatCurrency(item.supplierSummary.fromPrice)}/${item.unit}`
+                : `${formatCurrency(item.finalSellingPrice)}/${item.unit}`}
           </Text>
+          {/* Who can actually supply this to the customer's own area. */}
+          {!item.requestQuote && item.supplierSummary ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: FONTS.regular,
+                fontSize: scale(9),
+                marginTop: scale(2),
+                color:
+                  item.supplierSummary.count > 0
+                    ? '#15803D'
+                    : COLORS.textSecondary,
+              }}>
+              {item.supplierSummary.count > 0
+                ? `${item.supplierSummary.count} ${
+                    item.supplierSummary.count === 1 ? 'supplier' : 'suppliers'
+                  }${
+                    item.supplierSummary.bestEtaLabel
+                      ? ` · ${item.supplierSummary.bestEtaLabel}`
+                      : ''
+                  }`
+                : 'No supplier in your area yet'}
+            </Text>
+          ) : null}
         </View>
         {/* Add to Cart / Get a Quote */}
         {item.requestQuote ? (

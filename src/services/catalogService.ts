@@ -30,6 +30,14 @@ export interface Material {
   description?: string;
   specs?: string;
   diameter?: string;
+  // Present only when the material list was requested with a `pincode`.
+  // Summarises who can actually supply this item to that area.
+  supplierSummary?: {
+    count: number;
+    fromPrice: number | null;
+    bestEtaHours: number | null;
+    bestEtaLabel: string | null;
+  };
   transportation?: {
     type: 'per_km' | 'per_unit' | 'fixed' | 'free';
     charge: number;
@@ -118,6 +126,9 @@ const catalogService = {
     search?: string;
     page?: number;
     limit?: number;
+    // When supplied, each result carries a `supplierSummary` for that
+    // delivery area ("from ₹X · N suppliers · ETA").
+    pincode?: string;
   }) => api.get<PaginatedResponse<Material>>('/mobile/catalog/materials', {params}),
 
   getMaterialDetail: (id: string) =>

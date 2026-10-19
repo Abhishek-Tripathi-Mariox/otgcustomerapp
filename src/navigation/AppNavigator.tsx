@@ -23,6 +23,7 @@ import CmsPageScreen from '../screens/CmsPageScreen';
 import MyQuotationsScreen from '../screens/MyQuotationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import VendorComparisonScreen from '../screens/VendorComparisonScreen';
+import VendorProfileScreen from '../screens/VendorProfileScreen';
 import type {CartItem} from '../store';
 
 export type RootStackParamList = {
@@ -33,7 +34,17 @@ export type RootStackParamList = {
   Category: undefined;
   SubCategory: {categoryName?: string; categoryId?: string; brand?: string};
   AllBrands: undefined;
-  ProductDetail: {productName?: string};
+  ProductDetail: {
+    productName?: string;
+    productId?: string;
+    material?: any;
+    // Set when the customer picked a vendor on VendorComparison — the price
+    // is that vendor's OTG->Customer rate, which overrides the catalog one.
+    selectedVendorId?: string;
+    selectedVendorName?: string;
+    selectedVendorPrice?: number | null;
+    selectedVendorDelivery?: string | null;
+  };
   Cart: undefined;
   CheckoutDetails: {
     buyNowItem?: CartItem;
@@ -58,6 +69,8 @@ export type RootStackParamList = {
   MyQuotations: {focusId?: string} | undefined;
   Settings: undefined;
   VendorComparison: {materialId: string; materialName?: string};
+  // One supplier's own catalogue.
+  VendorProfile: {vendorId: string; vendorName?: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -95,6 +108,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="MyQuotations" component={MyQuotationsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="VendorComparison" component={VendorComparisonScreen} />
+        <Stack.Screen name="VendorProfile" component={VendorProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
