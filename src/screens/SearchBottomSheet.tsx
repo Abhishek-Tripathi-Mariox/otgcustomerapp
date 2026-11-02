@@ -65,9 +65,10 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
         const res = await catalogService.getMaterials({
           search: trimmed,
           limit: 20,
-          // Adds "from ₹X · N suppliers · ETA" to each result for the
-          // customer's own delivery area.
+          // One row per supplier offer for the customer's own delivery
+          // area, so searching a product lists every vendor selling it.
           pincode: deliveryPincode,
+          expandVendors: deliveryPincode ? 1 : undefined,
         });
         if (!cancelled && res.data.success) {
           setResults(res.data.data);
@@ -94,6 +95,17 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
       productId: item._id,
       productName: item.name,
       material: item,
+      // Tapping a supplier's row means "this supplier" — carry them through
+      // so the product page, the cart and checkout all agree on who is
+      // fulfilling it and at what price.
+      ...(item.vendor
+        ? {
+            selectedVendorId: item.vendor.id,
+            selectedVendorName: item.vendor.name,
+            selectedVendorPrice: item.finalSellingPrice,
+            selectedVendorDelivery: item.vendor.deliveryEstimate,
+          }
+        : {}),
     });
   };
 
@@ -153,9 +165,84 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
             </Text>
           ) : null}
           {(() => {
-            // With a delivery pincode we can show the real starting price
-            // from suppliers who actually serve that area, instead of the
-            // master catalogue price that may be nobody's actual price.
+            // Expanded mode: this row IS one supplier's offer, so show who
+            // they are, how far, how fast and their own price.
+            if (item.vendor) {
+              return (
+                <>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      marginTop: scale(3),
+                      fontFamily: FONTS.medium,
+                      fontSize: scale(11),
+                      color: COLORS.textPrimary,
+                    }}>
+                    {item.vendor.code ? `${item.vendor.code} · ` : ''}
+                    {item.vendor.name}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      marginTop: scale(1),
+                      fontFamily: FONTS.regular,
+                      fontSize: scale(10),
+                      color: '#15803D',
+                    }}>
+                    {[
+                      item.vendor.distanceKm != null
+                        ? `${item.vendor.distanceKm} km away`
+                        : null,
+                      item.vendor.deliveryEstimate,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                  {item.finalSellingPrice > 0 ? (
+                    <Text
+                      style={{
+                        marginTop: scale(2),
+                        fontFamily: FONTS.semiBold,
+                        fontSize: scale(13),
+                        color: COLORS.textPrimary,
+                      }}>
+                      {formatCurrency(item.finalSellingPrice)}/{item.unit}
+                    </Text>
+                  ) : null}
+                </>
+              );
+            }
+
+            // Expanded mode, but nobody stocks this item in the customer's
+            // area — still worth listing, at the catalog price.
+            if (item.offerKey) {
+              return (
+                <>
+                  {item.finalSellingPrice > 0 ? (
+                    <Text
+                      style={{
+                        marginTop: scale(2),
+                        fontFamily: FONTS.semiBold,
+                        fontSize: scale(13),
+                        color: COLORS.textPrimary,
+                      }}>
+                      {formatCurrency(item.finalSellingPrice)}/{item.unit}
+                    </Text>
+                  ) : null}
+                  <Text
+                    style={{
+                      marginTop: scale(2),
+                      fontFamily: FONTS.regular,
+                      fontSize: scale(10),
+                      color: COLORS.textSecondary,
+                    }}>
+                    No supplier in your area yet
+                  </Text>
+                </>
+              );
+            }
+
+            // Summary mode (no pincode / other callers) — unchanged.
             const sum = item.supplierSummary;
             const hasSuppliers = !!sum && sum.count > 0;
             const shown =
@@ -186,16 +273,6 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
                     {sum!.count}{' '}
                     {sum!.count === 1 ? 'supplier' : 'suppliers'} near you
                     {sum!.bestEtaLabel ? ` · ${sum!.bestEtaLabel}` : ''}
-                  </Text>
-                ) : sum ? (
-                  <Text
-                    style={{
-                      marginTop: scale(2),
-                      fontFamily: FONTS.regular,
-                      fontSize: scale(10),
-                      color: COLORS.textSecondary,
-                    }}>
-                    No supplier in your area yet
                   </Text>
                 ) : null}
               </>
@@ -311,7 +388,7 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
               ) : results.length > 0 ? (
                 <FlatList
                   data={results}
-                  keyExtractor={item => item._id}
+                  keyExtractor={item => item.offerKey || item._id}
                   renderItem={renderItem}
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}

@@ -30,6 +30,22 @@ export interface Material {
   description?: string;
   specs?: string;
   diameter?: string;
+  // Present only when the list was requested with `expandVendors` — the row
+  // then represents ONE VENDOR'S OFFER for this material rather than the
+  // product in the abstract, and `finalSellingPrice` is that vendor's price.
+  // `null` means nobody stocks it in the requested area.
+  vendor?: {
+    id: string;
+    code: string | null;
+    name: string;
+    distanceKm: number | null;
+    samePincode: boolean;
+    deliveryEstimate: string | null;
+    deliveryEtaHours: number | null;
+  } | null;
+  // Unique per (material, vendor) — `_id` repeats across offer rows.
+  offerKey?: string;
+  supplierCount?: number;
   // Present only when the material list was requested with a `pincode`.
   // Summarises who can actually supply this item to that area.
   supplierSummary?: {
@@ -129,6 +145,9 @@ const catalogService = {
     // When supplied, each result carries a `supplierSummary` for that
     // delivery area ("from ₹X · N suppliers · ETA").
     pincode?: string;
+    // With a pincode, returns one row PER VENDOR OFFER instead of one per
+    // product, so every supplier of a searched item is listed separately.
+    expandVendors?: 1;
   }) => api.get<PaginatedResponse<Material>>('/mobile/catalog/materials', {params}),
 
   getMaterialDetail: (id: string) =>
