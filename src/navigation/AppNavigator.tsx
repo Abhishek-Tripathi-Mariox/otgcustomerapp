@@ -41,7 +41,7 @@ export type RootStackParamList = {
     // Set when the customer picked a vendor on VendorComparison — the price
     // is that vendor's OTG->Customer rate, which overrides the catalog one.
     selectedVendorId?: string;
-    selectedVendorName?: string;
+    selectedVendorCode?: string;
     selectedVendorPrice?: number | null;
     selectedVendorDelivery?: string | null;
   };
@@ -70,7 +70,7 @@ export type RootStackParamList = {
   Settings: undefined;
   VendorComparison: {materialId: string; materialName?: string};
   // One supplier's own catalogue.
-  VendorProfile: {vendorId: string; vendorName?: string};
+  VendorProfile: {vendorId: string; vendorCode?: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

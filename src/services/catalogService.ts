@@ -36,8 +36,8 @@ export interface Material {
   // `null` means nobody stocks it in the requested area.
   vendor?: {
     id: string;
+    /** Vendor code — the API never sends the supplier's trading name. */
     code: string | null;
-    name: string;
     distanceKm: number | null;
     samePincode: boolean;
     deliveryEstimate: string | null;

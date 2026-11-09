@@ -58,7 +58,11 @@ export interface CartItem {
   // customer didn't use vendor comparison — the order is created unassigned
   // for admin to allocate a vendor manually.
   vendorId?: string;
-  vendorName?: string;
+  /**
+   * Vendor CODE, never the supplier's trading name — the customer side is
+   * never given the name (see customerFacingVendorLabel on the backend).
+   */
+  vendorCode?: string;
 }
 
 /**
@@ -85,7 +89,7 @@ const findCartLine = (items: CartItem[], ref: string): CartItem | undefined =>
 export const cartItemFromMaterial = (
   material: any,
   quantity = 1,
-  vendor?: {vendorId?: string; vendorName?: string; price?: number | null},
+  vendor?: {vendorId?: string; vendorCode?: string; price?: number | null},
 ): CartItem => ({
   id: material._id,
   name: material.name,
@@ -109,7 +113,7 @@ export const cartItemFromMaterial = (
   subCategory: material.subCategory?.name,
   transportation: material.transportation,
   vendorId: vendor?.vendorId,
-  vendorName: vendor?.vendorName,
+  vendorCode: vendor?.vendorCode,
 });
 
 interface AppState {

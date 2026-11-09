@@ -244,14 +244,14 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
   // for this same material.
   const [selectedVendor, setSelectedVendor] = useState<{
     vendorId: string;
-    vendorName: string;
+    vendorCode: string;
     price?: number | null;
     deliveryEstimate?: string | null;
   } | null>(
     route?.params?.selectedVendorId
       ? {
           vendorId: route.params.selectedVendorId,
-          vendorName: route.params.selectedVendorName || 'Selected vendor',
+          vendorCode: route.params.selectedVendorCode || 'Supplier',
           price: route.params.selectedVendorPrice,
           deliveryEstimate: route.params.selectedVendorDelivery,
         }
@@ -262,14 +262,14 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
     if (route?.params?.selectedVendorId) {
       setSelectedVendor({
         vendorId: route.params.selectedVendorId,
-        vendorName: route.params.selectedVendorName || 'Selected vendor',
+        vendorCode: route.params.selectedVendorCode || 'Supplier',
         price: route.params.selectedVendorPrice,
         deliveryEstimate: route.params.selectedVendorDelivery,
       });
     }
   }, [
     route?.params?.selectedVendorId,
-    route?.params?.selectedVendorName,
+    route?.params?.selectedVendorCode,
     route?.params?.selectedVendorPrice,
     route?.params?.selectedVendorDelivery,
   ]);
@@ -1149,7 +1149,7 @@ const ProductDetailScreen: React.FC<{navigation?: any; route?: any}> = ({
                     fontSize: scale(12),
                     color: '#15803D',
                   }}>
-                  Sourcing from {selectedVendor.vendorName}
+                  Sourcing from {selectedVendor.vendorCode}
                   {selectedVendor.deliveryEstimate
                     ? ` · ${selectedVendor.deliveryEstimate}`
                     : ''}

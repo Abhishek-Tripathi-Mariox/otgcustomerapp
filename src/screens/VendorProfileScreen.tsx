@@ -20,7 +20,7 @@ import vendorSearchService, {
 
 interface Props {
   navigation?: any;
-  route?: {params?: {vendorId: string; vendorName?: string}};
+  route?: {params?: {vendorId: string; vendorCode?: string}};
 }
 
 /**
@@ -69,7 +69,7 @@ const VendorProfileScreen: React.FC<Props> = ({navigation, route}) => {
       addCartItem(
         cartItemFromMaterial(material, material.minOrderQty || 1, {
           vendorId: data.vendor._id,
-          vendorName: data.vendor.name,
+          vendorCode: data.vendor.code,
           // The storefront already returns this vendor's own rate as
           // finalSellingPrice, so the cart line is priced correctly.
           price: material.finalSellingPrice,
@@ -78,15 +78,16 @@ const VendorProfileScreen: React.FC<Props> = ({navigation, route}) => {
     );
     showAppAlert({
       title: 'Added to cart',
-      message: `${material.name} from ${data.vendor.name}.`,
+      message: `${material.name} from ${data.vendor.code}.`,
     });
   };
 
-  const vendorName = data?.vendor.name || route?.params?.vendorName || 'Supplier';
+  const vendorLabel =
+    data?.vendor.code || route?.params?.vendorCode || 'Supplier';
 
   return (
     <View style={{flex: 1, backgroundColor: COLORS.background}}>
-      <ScreenHeader title={vendorName} onBack={() => navigation?.goBack()} />
+      <ScreenHeader title={vendorLabel} onBack={() => navigation?.goBack()} />
 
       {loading ? (
         <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
@@ -131,7 +132,7 @@ const VendorProfileScreen: React.FC<Props> = ({navigation, route}) => {
                 fontSize: scale(16),
                 color: COLORS.textPrimary,
               }}>
-              {data.vendor.name}
+              {data.vendor.code}
             </Text>
             {(data.vendor.city || data.vendor.pincode) && (
               <Text
@@ -182,7 +183,7 @@ const VendorProfileScreen: React.FC<Props> = ({navigation, route}) => {
                     // Carry the supplier through, so the product page and the
                     // cart stay bound to the vendor the customer came from.
                     selectedVendorId: data.vendor._id,
-                    selectedVendorName: data.vendor.name,
+                    selectedVendorCode: data.vendor.code,
                     selectedVendorPrice: m.finalSellingPrice,
                   })
                 }

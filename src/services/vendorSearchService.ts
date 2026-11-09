@@ -3,7 +3,12 @@ import {Material} from './catalogService';
 
 export interface MaterialVendorOption {
   vendorId: string;
-  vendorName: string;
+  /**
+   * Vendor CODE (e.g. "VND-00013") — the only vendor identity the customer
+   * side is given. The supplier's trading name is deliberately not returned
+   * by the API, so a buyer cannot go around OTG to the supplier directly.
+   */
+  vendorCode: string;
   /** OTG → Customer price for this vendor. Never the vendor's cost rate. */
   price: number | null;
   minOrderQty: number;
@@ -27,7 +32,8 @@ export type VendorSort =
 export interface VendorStorefront {
   vendor: {
     _id: string;
-    name: string;
+    /** Vendor code, never the trading name. */
+    code: string;
     city: string | null;
     pincode: string | null;
   };

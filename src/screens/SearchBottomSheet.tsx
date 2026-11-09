@@ -101,7 +101,7 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
       ...(item.vendor
         ? {
             selectedVendorId: item.vendor.id,
-            selectedVendorName: item.vendor.name,
+            selectedVendorCode: item.vendor.code,
             selectedVendorPrice: item.finalSellingPrice,
             selectedVendorDelivery: item.vendor.deliveryEstimate,
           }
@@ -178,8 +178,7 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
                       fontSize: scale(11),
                       color: COLORS.textPrimary,
                     }}>
-                    {item.vendor.code ? `${item.vendor.code} · ` : ''}
-                    {item.vendor.name}
+                    {item.vendor.code || 'Supplier'}
                   </Text>
                   <Text
                     numberOfLines={1}

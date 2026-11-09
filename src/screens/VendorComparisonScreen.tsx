@@ -125,7 +125,7 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
     navigation?.navigate('ProductDetail', {
       productId: materialId,
       selectedVendorId: vendor.vendorId,
-      selectedVendorName: vendor.vendorName,
+      selectedVendorCode: vendor.vendorCode,
       // Carry the vendor's own price back so the product page and the cart
       // show the amount the backend will actually charge for this vendor,
       // instead of the master catalog price.
@@ -306,7 +306,7 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
                       fontSize: scale(14),
                       color: COLORS.textPrimary,
                     }}>
-                    {v.vendorName}
+                    {v.vendorCode}
                   </Text>
                   {v.distanceKm != null && (
                     <Text
@@ -355,7 +355,7 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
                 onPress={() =>
                   navigation?.navigate('VendorProfile', {
                     vendorId: v.vendorId,
-                    vendorName: v.vendorName,
+                    vendorCode: v.vendorCode,
                   })
                 }
                 style={{marginTop: scale(8), alignSelf: 'flex-start'}}>
