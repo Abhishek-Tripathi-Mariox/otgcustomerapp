@@ -91,19 +91,18 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
 
   const handleSelect = (item: Material) => {
     onClose();
-    navigation?.navigate('ProductDetail', {
-      productId: item._id,
-      productName: item.name,
-      material: item,
-      // Tapping a supplier's row means "this supplier" — carry them through
-      // so the product page, the cart and checkout all agree on who is
-      // fulfilling it and at what price.
+    // Searching a material is a buying question - "who near me sells this,
+    // how fast, at what price" - so the result opens the comparison screen
+    // rather than the catalogue page. When the row was already one supplier's
+    // offer, that supplier is carried through as the customer's current pick,
+    // so they land on it marked and can either confirm it or switch.
+    navigation?.navigate('VendorComparison', {
+      materialId: item._id,
+      materialName: item.name,
       ...(item.vendor
         ? {
-            selectedVendorId: item.vendor.id,
-            selectedVendorCode: item.vendor.code,
-            selectedVendorPrice: item.finalSellingPrice,
-            selectedVendorDelivery: item.vendor.deliveryEstimate,
+            preferredVendorId: item.vendor.id,
+            preferredVendorCode: item.vendor.code,
           }
         : {}),
     });
@@ -391,6 +390,37 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
                   renderItem={renderItem}
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
+                  ListHeaderComponent={
+                    // Supplier rows only exist once we know where to deliver.
+                    // Without this the screen silently showed plain catalogue
+                    // rows and looked like the feature was missing.
+                    deliveryPincode ? null : (
+                      <TouchableOpacity
+                        onPress={() => {
+                          onClose();
+                          navigation?.navigate('SavedAddress');
+                        }}
+                        style={{
+                          backgroundColor: '#FFF7ED',
+                          borderWidth: 1,
+                          borderColor: '#FED7AA',
+                          borderRadius: scale(10),
+                          paddingVertical: scale(10),
+                          paddingHorizontal: scale(12),
+                          marginBottom: scale(10),
+                        }}>
+                        <Text
+                          style={{
+                            fontFamily: FONTS.medium,
+                            fontSize: scale(11),
+                            color: '#9A3412',
+                          }}>
+                          Add your delivery pincode to see suppliers and their
+                          prices for each product →
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  }
                 />
               ) : (
                 <View style={{paddingTop: scale(30), alignItems: 'center'}}>

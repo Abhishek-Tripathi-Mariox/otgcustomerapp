@@ -9,6 +9,12 @@ interface UserData {
   email?: string;
   profileImage?: string;
   address?: any;
+  /**
+   * Buyer details saved at checkout. Carries a pincode for customers who
+   * have ordered but never saved a site, so it is a useful last resort when
+   * working out which delivery area to show suppliers for.
+   */
+  checkoutProfile?: {pincode?: string} & Record<string, any>;
   status: string;
   isVerified: boolean;
   isNewUser: boolean;
@@ -124,6 +130,13 @@ interface AppState {
   savedAddresses: SavedAddress[];
   selectedAddressId: string | null;
   currentLocation: CurrentLocation | null;
+  /**
+   * Last delivery pincode the customer actually shopped with (typed on the
+   * vendor comparison screen). Kept so supplier-aware listings keep working
+   * for customers who have not saved a site yet — without it, search had no
+   * pincode to send and silently fell back to plain catalogue rows.
+   */
+  lastDeliveryPincode: string | null;
 }
 
 export interface AppliedOffer {
@@ -145,6 +158,7 @@ const initialState: AppState = {
   user: null,
   savedAddresses: [],
   selectedAddressId: null,
+  lastDeliveryPincode: null,
   currentLocation: null,
 };
 
@@ -152,6 +166,7 @@ const SAVED_ADDRESSES_KEY = 'savedAddresses';
 const SELECTED_ADDRESS_KEY = 'selectedAddressId';
 const SELLER_REQUEST_LOCAL_KEY = 'sellerRequestStatus';
 const CART_ITEMS_KEY = 'cartItems';
+const DELIVERY_PINCODE_KEY = 'lastDeliveryPincode';
 
 const persistCart = (items: CartItem[]) => {
   AsyncStorage.setItem(CART_ITEMS_KEY, JSON.stringify(items)).catch(() => {});
@@ -201,6 +216,16 @@ const appSlice = createSlice({
       persistAddresses([]);
       persistSelection(null);
       AsyncStorage.removeItem(SELLER_REQUEST_LOCAL_KEY).catch(() => {});
+    },
+    setDeliveryPincode: (state, action: PayloadAction<string | null>) => {
+      const pin = action.payload?.trim() || null;
+      state.lastDeliveryPincode = pin && /^\d{6}$/.test(pin) ? pin : null;
+      if (state.lastDeliveryPincode) {
+        AsyncStorage.setItem(
+          DELIVERY_PINCODE_KEY,
+          state.lastDeliveryPincode,
+        ).catch(() => {});
+      }
     },
     hydrateAddresses: (
       state,
@@ -326,6 +351,7 @@ export const {
   updateUser,
   logoutSuccess,
   hydrateAddresses,
+  setDeliveryPincode,
   addAddress,
   updateAddress,
   deleteAddress,
@@ -438,6 +464,8 @@ export const loadPersistedAddresses = async () => {
     ]);
     const addresses: SavedAddress[] = raw ? JSON.parse(raw) : [];
     store.dispatch(hydrateAddresses({addresses, selectedId: selectedId || null}));
+    const lastPin = await AsyncStorage.getItem(DELIVERY_PINCODE_KEY);
+    if (lastPin) store.dispatch(setDeliveryPincode(lastPin));
   } catch {
     // ignore corrupt state
   }

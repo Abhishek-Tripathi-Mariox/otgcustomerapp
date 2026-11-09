@@ -16,12 +16,22 @@ import vendorSearchService, {
   MaterialVendorOption,
   VendorSort,
 } from '../services/vendorSearchService';
+import {useAppDispatch, setDeliveryPincode} from '../store';
+import useDeliveryPincode from '../hooks/useDeliveryPincode';
 import addressService from '../services/addressService';
 import authService from '../services/authService';
 
 interface Props {
   navigation?: any;
-  route?: {params?: {materialId: string; materialName?: string}};
+  route?: {
+    params?: {
+      materialId: string;
+      materialName?: string;
+      /** Supplier the customer tapped in search, shown here as their pick. */
+      preferredVendorId?: string;
+      preferredVendorCode?: string;
+    };
+  };
 }
 
 const formatCurrency = (n: number | null) =>
@@ -38,8 +48,14 @@ const SORT_OPTIONS: Array<{key: VendorSort; label: string}> = [
 const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
   const materialId = route?.params?.materialId;
   const materialName = route?.params?.materialName || 'this material';
+  const preferredVendorId = route?.params?.preferredVendorId;
+  const dispatch = useAppDispatch();
+  // Already known locally (selected site, last search, profile, checkout), so
+  // a customer arriving from search sees results immediately instead of an
+  // empty form while a network prefill is still in flight.
+  const knownPincode = useDeliveryPincode();
 
-  const [pincode, setPincode] = useState('');
+  const [pincode, setPincode] = useState(knownPincode || '');
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<MaterialVendorOption[]>([]);
@@ -49,16 +65,29 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
   const [sort, setSort] = useState<VendorSort>('recommended');
   const [fastOnly, setFastOnly] = useState(false);
 
-  // Prefill from the customer's default saved site / checkout profile so a
-  // returning customer doesn't have to type their pincode every time —
-  // still editable, since F28 lets them search a different region too.
+  // The locally known pincode can arrive a tick late (the store rehydrates
+  // from disk), so adopt it when it does — but never over something the
+  // customer has typed in the meantime.
   useEffect(() => {
+    if (knownPincode) setPincode(prev => prev || knownPincode);
+  }, [knownPincode]);
+
+  // Server-side prefill: the default saved site, else the checkout profile.
+  // Only needed when nothing is known locally, so a returning customer never
+  // has to type their pincode again — still editable, since F28 lets them
+  // search a different region too.
+  useEffect(() => {
+    if (knownPincode) return;
+    let cancelled = false;
+    const adopt = (pin?: string | null) => {
+      if (!cancelled && pin) setPincode(prev => prev || pin);
+    };
     (async () => {
       try {
         const addrRes = await addressService.list();
         const primary = addrRes.data?.data?.find(a => a.isDefault);
         if (primary?.pincode) {
-          setPincode(primary.pincode);
+          adopt(primary.pincode);
           return;
         }
       } catch {
@@ -66,12 +95,15 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
       }
       try {
         const profileRes = await authService.getProfile();
-        const pin = profileRes.data?.data?.checkoutProfile?.pincode;
-        if (pin) setPincode(pin);
+        adopt(profileRes.data?.data?.checkoutProfile?.pincode);
       } catch {
         // no prefill available — customer types it in manually
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const search = useCallback(async () => {
@@ -94,6 +126,10 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
       );
       setResults(res.data.data || []);
       setSearched(true);
+      // Remember it: listings and search elsewhere need a delivery area to
+      // show suppliers at all, and this is often the only place a customer
+      // ever types one.
+      dispatch(setDeliveryPincode(pin));
     } catch (e: any) {
       setError(
         e?.response?.data?.message || 'Could not load vendors. Please try again.',
@@ -101,7 +137,7 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
     } finally {
       setLoading(false);
     }
-  }, [materialId, pincode, sort, fastOnly]);
+  }, [materialId, pincode, sort, fastOnly, dispatch]);
 
   // Auto-search once a pincode is available from prefill.
   useEffect(() => {
@@ -117,6 +153,17 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, fastOnly]);
 
+  // Reaching this screen from search must never be a dead end: if nobody
+  // stocks the material for this pincode there is still a catalogue page to
+  // read, ask a quote on, or come back to after changing the pincode.
+  const openProductDetail = () => {
+    if (!materialId) return;
+    navigation?.navigate('ProductDetail', {
+      productId: materialId,
+      productName: route?.params?.materialName,
+    });
+  };
+
   const handleSelect = (vendor: MaterialVendorOption) => {
     if (!materialId) return;
     // Navigating back to an already-in-stack screen merges these params
@@ -124,6 +171,9 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
     // selectedVendor state, which watches for exactly these two params).
     navigation?.navigate('ProductDetail', {
       productId: materialId,
+      // Arriving from search there is no ProductDetail in the stack yet, so
+      // the name here is what the header shows while the fetch is in flight.
+      productName: route?.params?.materialName,
       selectedVendorId: vendor.vendorId,
       selectedVendorCode: vendor.vendorCode,
       // Carry the vendor's own price back so the product page and the cart
@@ -269,16 +319,75 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
             {error}
           </Text>
         ) : searched && results.length === 0 ? (
-          <Text
-            style={{
-              fontFamily: FONTS.regular,
-              fontSize: scale(13),
-              color: COLORS.textSecondary,
-              textAlign: 'center',
-              paddingVertical: scale(40),
-            }}>
-            No vendors currently stock this material for that pincode.
-          </Text>
+          <View style={{paddingVertical: scale(40), alignItems: 'center'}}>
+            <Text
+              style={{
+                fontFamily: FONTS.regular,
+                fontSize: scale(13),
+                color: COLORS.textSecondary,
+                textAlign: 'center',
+              }}>
+              No vendors currently stock this material for that pincode.
+            </Text>
+            <Text
+              style={{
+                fontFamily: FONTS.regular,
+                fontSize: scale(12),
+                color: COLORS.textLight,
+                textAlign: 'center',
+                marginTop: scale(6),
+              }}>
+              Try a nearby pincode, or open the product page to request a
+              quotation.
+            </Text>
+            <TouchableOpacity
+              onPress={openProductDetail}
+              style={{
+                marginTop: scale(16),
+                paddingHorizontal: scale(18),
+                paddingVertical: scale(10),
+                borderRadius: scale(10),
+                borderWidth: 1,
+                borderColor: COLORS.primary,
+              }}>
+              <Text
+                style={{
+                  fontFamily: FONTS.semiBold,
+                  fontSize: scale(12),
+                  color: COLORS.primary,
+                }}>
+                View product details
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : !searched ? (
+          // Nothing known yet: say what the pincode buys them, so the empty
+          // screen reads as a prompt rather than as a broken search.
+          <View style={{paddingVertical: scale(40), alignItems: 'center'}}>
+            <Text
+              style={{
+                fontFamily: FONTS.regular,
+                fontSize: scale(13),
+                color: COLORS.textSecondary,
+                textAlign: 'center',
+              }}>
+              Enter your delivery pincode above to see every supplier selling{' '}
+              {materialName}, with their price and delivery time.
+            </Text>
+            <TouchableOpacity
+              onPress={openProductDetail}
+              style={{marginTop: scale(14)}}>
+              <Text
+                style={{
+                  fontFamily: FONTS.medium,
+                  fontSize: scale(12),
+                  color: COLORS.primary,
+                  textDecorationLine: 'underline',
+                }}>
+                View product details
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           results.map(v => (
             <TouchableOpacity
@@ -300,14 +409,39 @@ const VendorComparisonScreen: React.FC<Props> = ({navigation, route}) => {
                   alignItems: 'flex-start',
                 }}>
                 <View style={{flex: 1, paddingRight: scale(10)}}>
-                  <Text
+                  <View
                     style={{
-                      fontFamily: FONTS.semiBold,
-                      fontSize: scale(14),
-                      color: COLORS.textPrimary,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: scale(6),
                     }}>
-                    {v.vendorCode}
-                  </Text>
+                    <Text
+                      style={{
+                        fontFamily: FONTS.semiBold,
+                        fontSize: scale(14),
+                        color: COLORS.textPrimary,
+                      }}>
+                      {v.vendorCode || 'Supplier'}
+                    </Text>
+                    {preferredVendorId === v.vendorId && (
+                      <View
+                        style={{
+                          backgroundColor: '#FEF3C7',
+                          paddingHorizontal: scale(6),
+                          paddingVertical: scale(2),
+                          borderRadius: scale(10),
+                        }}>
+                        <Text
+                          style={{
+                            fontFamily: FONTS.medium,
+                            fontSize: scale(9),
+                            color: '#92400E',
+                          }}>
+                          From your search
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   {v.distanceKm != null && (
                     <Text
                       style={{

@@ -68,7 +68,15 @@ export type RootStackParamList = {
   // highlight the specific quotation that push was about.
   MyQuotations: {focusId?: string} | undefined;
   Settings: undefined;
-  VendorComparison: {materialId: string; materialName?: string};
+  VendorComparison: {
+    materialId: string;
+    materialName?: string;
+    // The supplier whose row the customer tapped in search. Carried so the
+    // comparison screen can mark it as their current pick — they arrived
+    // having already seen one offer, not from a blank slate.
+    preferredVendorId?: string;
+    preferredVendorCode?: string;
+  };
   // One supplier's own catalogue.
   VendorProfile: {vendorId: string; vendorCode?: string};
 };

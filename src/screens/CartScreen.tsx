@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import PromoBottomSheet from './PromoBottomSheet';
+import SearchBottomSheet from './SearchBottomSheet';
 import CouponSuccessModal from './CouponSuccessModal';
 import Svg, {Path, Circle} from 'react-native-svg';
 import {scale} from '../utils/scale';
@@ -77,6 +78,7 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
       (selectedAddress.phone ? `. ${selectedAddress.phone}` : '')
     : '';
   const [promoVisible, setPromoVisible] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
   const [couponSuccessVisible, setCouponSuccessVisible] = useState(false);
   const [appliedCode, setAppliedCode] = useState('');
 
@@ -169,7 +171,10 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
         style={{flex: 1}}
         showsVerticalScrollIndicator={false}
         bounces={false}>
-        {/* Search By Brand */}
+        {/* Search By Brand - opens the same search sheet as the home bar, so
+            adding another material from the cart goes through supplier
+            comparison too. The field itself is a button: it was previously a
+            text box with no handler at all, which typed but never searched. */}
         <View
           style={{
             marginHorizontal: scale(16),
@@ -177,7 +182,9 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
             flexDirection: 'row',
             alignItems: 'center',
           }}>
-          <View
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSearchVisible(true)}
             style={{
               flex: 1,
               height: scale(46),
@@ -201,9 +208,12 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
               }}
               placeholder="Search By Brand"
               placeholderTextColor={COLORS.textPlaceholder}
+              editable={false}
+              pointerEvents="none"
             />
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity
+            onPress={() => setSearchVisible(true)}
             style={{
               marginLeft: scale(10),
               width: scale(46),
@@ -699,6 +709,14 @@ const CartScreen: React.FC<{navigation?: any}> = ({navigation}) => {
           setPromoVisible(false);
           setTimeout(() => setCouponSuccessVisible(true), 300);
         }}
+      />
+
+      {/* Same search sheet as the home screen, so results here lead to the
+          supplier comparison exactly as they do there. */}
+      <SearchBottomSheet
+        visible={searchVisible}
+        onClose={() => setSearchVisible(false)}
+        navigation={navigation}
       />
 
       {/* Coupon Success Modal */}

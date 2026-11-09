@@ -222,6 +222,25 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
     return () => clearTimeout(timer);
   }, [searchText]);
 
+  // Typing in this screen's search bar is the same buying question the main
+  // search bar asks, so a searched result opens the supplier comparison.
+  // Browsing the category with an empty box still opens the product page -
+  // browsing is "show me what exists", not "who sells this to me".
+  const openResult = (item: Material) => {
+    if (searchText.trim()) {
+      navigation?.navigate('VendorComparison', {
+        materialId: item._id,
+        materialName: item.name,
+      });
+      return;
+    }
+    navigation?.navigate('ProductDetail', {
+      productId: item._id,
+      productName: item.name,
+      material: item,
+    });
+  };
+
   const renderProductCard = (item: Material) => {
     const discount = item.mrp > item.finalSellingPrice
       ? Math.round(((item.mrp - item.finalSellingPrice) / item.mrp) * 100)
@@ -232,7 +251,7 @@ const SingleCategoryScreen: React.FC<{navigation?: any; route?: any}> = ({
     return (
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => navigation?.navigate('ProductDetail', {productId: item._id, productName: item.name, material: item})}
+        onPress={() => openResult(item)}
         key={item._id}
         style={{
           width: CARD_WIDTH,
